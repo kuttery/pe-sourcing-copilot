@@ -1,0 +1,85 @@
+"""
+eval/evaluate.py
+
+Evaluation runner.
+
+Runs the full pipeline up to scoring, produces TWO rankings:
+  1. Agentic ranking  — companies sorted by deterministic PE score
+  2. Baseline ranking — companies sorted by market cap (naive screen)
+
+then scores both against the verified `pe_acquired` ground truth and
+prints a side-by-side comparison table.
+
+Run:  python eval/evaluate.py
+"""
+import os
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+from config import DEFAULT_FILTERS, EVAL_K_VALUES
+from agents import universe_agent, data_agent, scoring_agent, baseline
+from eval.metrics import evaluate_ranking
+
+
+def build_labels(universe_df):
+    """ticker -> 1/0 ground-truth label."""
+    return dict(zip(universe_df["ticker"], universe_df["pe_acquired"]))
+
+
+def agentic_ranking(scores):
+    """Tickers sorted by PE score descending."""
+    ordered = sorted(scores.values(), key=lambda s: s["pe_score"], reverse=True)
+    return [s["ticker"] for s in ordered]
+
+
+def run():
+    print("=" * 64)
+    print("PE SOURCING COPILOT — EVALUATION")
+    print("=" * 64)
+
+    universe = universe_agent.run(DEFAULT_FILTERS)
+    labels = build_labels(universe)
+    n_pos = sum(labels.values())
+    print(f"\nGround truth: {n_pos} PE-acquired / {len(labels)} companies "
+          f"(base rate {n_pos/len(labels):.1%})\n")
+
+    profiles = data_agent.run(universe)
+    scores = scoring_agent.run(profiles)
+
+    rank_agentic = agentic_ranking(scores)
+    rank_baseline = baseline.rank(profiles)
+
+    eval_agentic = evaluate_ranking(rank_agentic, labels, EVAL_K_VALUES)
+    eval_baseline = evaluate_ranking(rank_baseline, labels, EVAL_K_VALUES)
+
+    # ---- comparison table -------------------------------------------------
+    print("\n" + "=" * 64)
+    print("RESULTS — Agentic PE pipeline  vs.  Market-cap baseline")
+    print("=" * 64)
+    header = f"{'Metric':<16}{'K':<5}{'Agentic':<12}{'Baseline':<12}{'Delta':<10}"
+    print(header)
+    print("-" * 64)
+    for metric in ["precision", "recall", "ndcg"]:
+        for k in EVAL_K_VALUES:
+            a = eval_agentic[k][metric]
+            b = eval_baseline[k][metric]
+            delta = round(a - b, 3)
+            sign = "+" if delta >= 0 else ""
+            print(f"{metric:<16}{k:<5}{a:<12}{b:<12}{sign}{delta:<10}")
+        print("-" * 64)
+
+    # ---- top-10 side by side ---------------------------------------------
+    print("\nTop-10 shortlist (✓ = actually PE-acquired):")
+    print(f"{'Rank':<6}{'Agentic':<28}{'Baseline':<28}")
+    for i in range(min(10, len(rank_agentic))):
+        ta = rank_agentic[i]
+        tb = rank_baseline[i]
+        ma = "✓" if labels.get(ta) else " "
+        mb = "✓" if labels.get(tb) else " "
+        print(f"{i+1:<6}{ta+' '+ma:<28}{tb+' '+mb:<28}")
+
+    return {"agentic": eval_agentic, "baseline": eval_baseline}
+
+
+if __name__ == "__main__":
+    run()

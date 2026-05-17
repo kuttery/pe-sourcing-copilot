@@ -1,0 +1,41 @@
+ticker,company_name,sector,geography,pe_acquired,acquirer,deal_note
+SMAR,Smartsheet,Software,US,1,Vista Equity Partners + Blackstone,~$8.4B take-private completed 2025
+SQSP,Squarespace,Software,US,1,Permira,~$7.3B take-private completed 2024 (delisted)
+INST,Instructure,Software,US,1,KKR,~$4.8B take-private completed 2024
+EVBG,Everbridge,Software,US,1,Thoma Bravo,~$1.8B take-private completed 2024
+PWSC,PowerSchool,Software,US,1,Bain Capital,~$5.6B take-private completed 2024
+AYX,Alteryx,Software,US,1,Clearlake + Insight Partners,~$4.4B take-private completed 2024
+MODN,Model N,Software,US,1,Vista Equity Partners,~$1.25B take-private completed 2024
+DAY,Dayforce,Software,US,1,Thoma Bravo,take-private agreed 2025
+OLO,Olo,Software,US,1,Thoma Bravo,take-private agreed 2025
+PRO,PROS Holdings,Software,US,1,Thoma Bravo,take-private agreed 2025
+JAMF,Jamf Holding,Software,US,1,Francisco Partners,~$2.2B take-private agreed 2025
+NVEI,Nuvei,Fintech,CA,1,Advent International,~$6.15B take-private completed 2025
+CTLT,Catalent,Healthcare,US,1,Novo Holdings,~$16.3B take-private completed 2024 (borderline: strategic/holding buyer)
+WBA,Walgreens Boots Alliance,Healthcare,US,1,Sycamore Partners,~$23.7B take-private completed 2025
+DDOG,Datadog,Software,US,0,,still public
+SNOW,Snowflake,Software,US,0,,still public
+NET,Cloudflare,Software,US,0,,still public
+HUBS,HubSpot,Software,US,0,,still public
+WDAY,Workday,Software,US,0,,still public
+TEAM,Atlassian,Software,US,0,,still public
+NOW,ServiceNow,Software,US,0,,still public
+CRM,Salesforce,Software,US,0,,still public
+ZM,Zoom Communications,Software,US,0,,still public
+DOCU,DocuSign,Software,US,0,,still public
+TWLO,Twilio,Software,US,0,,still public
+OKTA,Okta,Software,US,0,,still public
+ZS,Zscaler,Software,US,0,,still public
+CRWD,CrowdStrike,Software,US,0,,still public
+PANW,Palo Alto Networks,Software,US,0,,still public
+MDB,MongoDB,Software,US,0,,still public
+ESTC,Elastic,Software,US,0,,still public
+PD,PagerDuty,Software,US,0,,still public
+FROG,JFrog,Software,US,0,,still public
+BILL,BILL Holdings,Fintech,US,0,,still public
+PCTY,Paylocity,Software,US,0,,still public
+PAYC,Paycom Software,Software,US,0,,still public
+APPF,AppFolio,Software,US,0,,still public
+BLKB,Blackbaud,Software,US,0,,still public
+ALRM,Alarm.com,Software,US,0,,still public
+WK,Workiva,Software,US,0,,still public
