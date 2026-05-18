@@ -381,9 +381,12 @@ with tab1:
             progress_bar.progress(done / total, text=label)
             status_text.caption(label)
 
-        profiles_live = universe_agent.run_live(filters, progress_cb=on_progress)
+        profiles_live, screener_errors = universe_agent.run_live(filters, progress_cb=on_progress)
         progress_bar.empty()
         status_text.empty()
+        if screener_errors:
+            for err in screener_errors:
+                st.caption(f"ℹ️ {err}")
         if profiles_live:
             st.session_state["profiles"]    = profiles_live
             st.session_state["profiles_df"] = profiles_to_df(profiles_live)

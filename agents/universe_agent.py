@@ -37,16 +37,40 @@ ALL_SECTORS = [
 ]
 
 
-# ── screener ──────────────────────────────────────────────────────────────────
+# ── seed ticker list (fallback when screener API is unavailable) ──────────────
+# A curated list of US-listed software companies used as a reliable fallback
+# when yf.screen() is blocked or returns 0 (common on hosted environments).
+SEED_TICKERS_US_SOFTWARE = [
+    "MSFT", "ORCL", "SAP",  "CRM",  "ADBE", "INTU", "NOW",  "WDAY", "SNOW",
+    "DDOG", "MDB",  "VEEV", "HUBS", "TEAM", "ZM",   "OKTA", "DOMO", "APPF",
+    "PAYC", "PCTY", "PAYX", "SMAR", "SQSP", "INST", "EVBG", "PWSC", "AYX",
+    "MODN", "OLO",  "PRO",  "JAMF", "BILL", "ALRM", "FROG", "TWLO", "NET",
+    "ZS",   "CRWD", "S",    "PANW", "FTNT", "CYBR", "TENB", "RPD",  "QLYS",
+    "WK",   "APPN", "PEGA", "SPSN", "NCNO", "TOST", "BRZE", "GTLB", "CFLT",
+    "COUP", "SPSC", "MANH", "PRFT", "EPAM", "CSGP", "ANGI", "AVLR", "TRMK",
+    "RNG",  "EGHT", "FIVN", "NICE", "CCCS", "AGYS", "NUAN", "CDNS", "SNPS",
+    "ANSYS","PTC",  "TTWO", "EA",   "RBLX", "U",    "UNITY","ZETA", "DV",
+    "MGNI", "TTD",  "PUBM", "IAS",  "VNET", "OPEN", "OPCH", "ASAN", "TASK",
+]
+
 
 def _screen_tickers(min_cap: float, max_cap: float,
-                    regions=None, sectors=None) -> list:
+                    regions=None, sectors=None,
+                    screener_errors=None) -> list:
     """
     Query Yahoo Finance screener for each region × sector combination.
     Returns a deduplicated list of ticker symbols.
+
+    If the screener returns 0 results AND region is US-only, falls back to
+    SEED_TICKERS_US_SOFTWARE so the app always has something to fetch.
+
+    screener_errors: optional list that will be populated with error strings
+    so the caller can surface them in the UI.
     """
     regions = regions or ['us']
     sectors = sectors or ['Technology']
+    if screener_errors is None:
+        screener_errors = []
 
     all_tickers = []
     for region in regions:
@@ -60,17 +84,27 @@ def _screen_tickers(min_cap: float, max_cap: float,
             try:
                 results = yf.screen(EquityQuery('and', clauses),
                                     size=250, sortField='intradaymarketcap', sortAsc=False)
-                all_tickers.extend(
-                    qt['symbol'] for qt in results.get('quotes', []) if qt.get('symbol')
-                )
+                batch = [qt['symbol'] for qt in results.get('quotes', []) if qt.get('symbol')]
+                print(f"  [UniverseAgent] screener ({region}/{sector}): {len(batch)} tickers")
+                all_tickers.extend(batch)
             except Exception as e:
-                print(f"  [UniverseAgent] screener error ({region}/{sector}): {e}")
+                msg = f"Screener error ({region}/{sector}): {e}"
+                print(f"  [UniverseAgent] {msg}")
+                screener_errors.append(msg)
 
     seen, unique = set(), []
     for t in all_tickers:
         if t not in seen:
             seen.add(t)
             unique.append(t)
+
+    # Fallback: if screener returned nothing for a US-only request, use seed list
+    if not unique and set(regions) == {'us'}:
+        print("  [UniverseAgent] screener returned 0 — falling back to seed ticker list")
+        screener_errors.append(
+            "Yahoo Finance screener returned 0 results — using built-in seed list instead.")
+        unique = list(SEED_TICKERS_US_SOFTWARE)
+
     return unique
 
 
@@ -155,7 +189,7 @@ def save_cache(cache: dict):
         json.dump(cache, f, indent=2)
 
 
-def run_live(filters: dict, progress_cb=None) -> dict:
+def run_live(filters: dict, progress_cb=None) -> tuple:
     """
     Full live fetch:
       1. Screen Yahoo Finance for tickers matching all filters
@@ -163,6 +197,8 @@ def run_live(filters: dict, progress_cb=None) -> dict:
       3. Update cache and return all profiles
 
     progress_cb(done, total, ticker) — optional callback for UI progress bar.
+
+    Returns (profiles_dict, screener_errors_list).
     """
     min_cap = filters.get('min_market_cap', 1e9)
     max_cap = filters.get('max_market_cap', 60e9)
@@ -172,7 +208,9 @@ def run_live(filters: dict, progress_cb=None) -> dict:
     print(f"[UniverseAgent] screening Yahoo Finance "
           f"regions={regions} sectors={sectors} "
           f"${min_cap/1e9:.0f}B–${max_cap/1e9:.0f}B ...")
-    tickers = _screen_tickers(min_cap, max_cap, regions=regions, sectors=sectors)
+    screener_errors = []
+    tickers = _screen_tickers(min_cap, max_cap, regions=regions, sectors=sectors,
+                               screener_errors=screener_errors)
     print(f"[UniverseAgent] screener returned {len(tickers)} tickers")
 
     cache = load_cache()
@@ -193,7 +231,7 @@ def run_live(filters: dict, progress_cb=None) -> dict:
 
     # return only tickers that came from screener + are software, deduplicated
     raw = {t: cache[t] for t in tickers if t in cache}
-    return deduplicate_profiles(raw)
+    return deduplicate_profiles(raw), screener_errors
 
 
 def deduplicate_profiles(profiles: dict) -> dict:
