@@ -1,5 +1,5 @@
 """
-app.py — PE Sourcing Copilot — reactive financial screener
+app.py — PE Sourcing Copilot
 Run with:  streamlit run app.py
 """
 import os, sys, json
@@ -8,179 +8,58 @@ import streamlit as st
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-st.set_page_config(
-    page_title="PE Sourcing Copilot",
-    page_icon="🔍",
-    layout="wide",
-)
+st.set_page_config(page_title="PE Sourcing Copilot", page_icon="🔍", layout="wide")
 
-# ── load data once at startup ─────────────────────────────────────────────────
-@st.cache_data
-def load_data():
-    cache_path = os.path.join(os.path.dirname(__file__), "data", "cache.json")
-    universe_path = os.path.join(os.path.dirname(__file__), "data", "universe.csv")
+from agents import universe_agent, scoring_agent
 
-    with open(cache_path) as f:
-        cache = json.load(f)
+# ── helpers ───────────────────────────────────────────────────────────────────
 
-    universe_df = pd.read_csv(universe_path)
-    labels = dict(zip(universe_df["ticker"], universe_df["pe_acquired"]))
-
-    # score in background
-    sys.path.insert(0, os.path.dirname(__file__))
+def profiles_to_df(profiles: dict) -> pd.DataFrame:
     from agents import scoring_agent
-    scores = {t: scoring_agent.score_company(p) for t, p in cache.items()}
-
     rows = []
-    for ticker, p in cache.items():
-        s = scores.get(ticker, {})
+    for ticker, p in profiles.items():
+        s = scoring_agent.score_company(p)
         rows.append({
-            "Ticker":         ticker,
-            "Company":        p.get("company_name", ticker),
-            "Market Cap ($B)": round(p["market_cap"] / 1e9, 2) if p.get("market_cap") else None,
-            "Revenue ($M)":   round(p["revenue"] / 1e6, 0) if p.get("revenue") else None,
-            "Rev Growth (%)": round(p["revenue_growth"] * 100, 1) if p.get("revenue_growth") is not None else None,
-            "EBITDA Margin (%)": round(p["ebitda_margin"] * 100, 1) if p.get("ebitda_margin") is not None else None,
-            "FCF Margin (%)": round(p["fcf_margin"] * 100, 1) if p.get("fcf_margin") is not None else None,
-            "EV / Revenue":   round(p["ev_revenue"], 1) if p.get("ev_revenue") else None,
-            "Net Debt / EBITDA": round(p["net_debt_ebitda"], 1) if p.get("net_debt_ebitda") is not None else None,
-            "PE Score":       s.get("pe_score"),
-            "PE Acquired":    bool(labels.get(ticker, 0)),
-            # raw for filtering
-            "_market_cap":    p.get("market_cap"),
-            "_rev_growth":    p.get("revenue_growth"),
-            "_ebitda_margin": p.get("ebitda_margin"),
-            "_fcf_margin":    p.get("fcf_margin"),
-            "_ev_revenue":    p.get("ev_revenue"),
-            "_net_debt_ebitda": p.get("net_debt_ebitda"),
+            "Ticker":              ticker,
+            "Company":             p.get("company_name", ticker),
+            "Market Cap ($B)":     round(p["market_cap"] / 1e9, 2) if p.get("market_cap") else None,
+            "Revenue ($M)":        round(p["revenue"] / 1e6, 0)    if p.get("revenue")     else None,
+            "Rev Growth (%)":      round(p["revenue_growth"] * 100, 1) if p.get("revenue_growth") is not None else None,
+            "EBITDA Margin (%)":   round(p["ebitda_margin"] * 100, 1)  if p.get("ebitda_margin")  is not None else None,
+            "FCF Margin (%)":      round(p["fcf_margin"] * 100, 1)     if p.get("fcf_margin")     is not None else None,
+            "EV / Revenue":        round(p["ev_revenue"], 1)            if p.get("ev_revenue")              else None,
+            "Net Debt / EBITDA":   round(p["net_debt_ebitda"], 1)       if p.get("net_debt_ebitda") is not None else None,
+            "PE Score":            s.get("pe_score"),
+            "_market_cap":         p.get("market_cap"),
+            "_rev_growth":         p.get("revenue_growth"),
+            "_ebitda_margin":      p.get("ebitda_margin"),
+            "_fcf_margin":         p.get("fcf_margin"),
+            "_ev_revenue":         p.get("ev_revenue"),
+            "_net_debt_ebitda":    p.get("net_debt_ebitda"),
         })
-
     return pd.DataFrame(rows)
 
 
-@st.cache_data
-def load_memos():
-    outputs = os.path.join(os.path.dirname(__file__), "outputs")
-    memos = {}
-    for f in os.listdir(outputs):
-        if f.startswith("memo_") and f.endswith(".md"):
-            ticker = f[5:-3]
-            with open(os.path.join(outputs, f)) as fh:
-                memos[ticker] = fh.read()
-    return memos
+def apply_filters(df, rg_min, rg_max, em_min, em_max, fcf_min, fcf_max, evr_max, nd_max):
+    df = df[df["_rev_growth"].notna() & (df["_rev_growth"]*100 >= rg_min) & (df["_rev_growth"]*100 <= rg_max)]
+    df = df[df["_ebitda_margin"].notna() & (df["_ebitda_margin"]*100 >= em_min) & (df["_ebitda_margin"]*100 <= em_max)]
+    df = df[df["_fcf_margin"].notna() & (df["_fcf_margin"]*100 >= fcf_min) & (df["_fcf_margin"]*100 <= fcf_max)]
+    df = df[df["_ev_revenue"].notna() & (df["_ev_revenue"] <= evr_max)]
+    if nd_max is not None:
+        df = df[df["_net_debt_ebitda"].notna() & (df["_net_debt_ebitda"] <= nd_max)]
+    return df
 
 
-df_all = load_data()
-memos = load_memos()
+def render_table(df_display, sort_by, sort_asc):
+    df_display = df_display.sort_values(sort_by, ascending=sort_asc, na_position="last")
 
-# ── sidebar filters ───────────────────────────────────────────────────────────
-with st.sidebar:
-    st.header("Filters")
-
-    # market cap
-    mc_min, mc_max = st.slider(
-        "Market Cap ($B)", min_value=0.1, max_value=100.0,
-        value=(1.0, 60.0), step=0.5
-    )
-
-    # revenue growth
-    rg_min, rg_max = st.slider(
-        "Revenue Growth (%)", min_value=-20, max_value=60,
-        value=(-20, 60), step=1
-    )
-
-    # ebitda margin
-    em_min, em_max = st.slider(
-        "EBITDA Margin (%)", min_value=-50, max_value=60,
-        value=(-50, 60), step=1
-    )
-
-    # fcf margin
-    fcf_min, fcf_max = st.slider(
-        "FCF Margin (%)", min_value=-30, max_value=50,
-        value=(-30, 50), step=1
-    )
-
-    # ev/revenue
-    evr_max = st.slider("Max EV / Revenue", min_value=1.0, max_value=30.0, value=30.0, step=0.5)
-
-    # net debt / ebitda
-    nd_max = st.number_input("Max Net Debt / EBITDA (blank = no limit)", value=None,
-                              min_value=0.0, max_value=20.0, step=0.5,
-                              placeholder="No limit")
-
-    st.divider()
-
-    # sort
-    sort_by = st.selectbox("Sort by", [
-        "PE Score", "Market Cap ($B)", "Rev Growth (%)",
-        "EBITDA Margin (%)", "FCF Margin (%)", "EV / Revenue", "Net Debt / EBITDA"
-    ])
-    sort_asc = st.checkbox("Sort ascending", value=False)
-
-    st.divider()
-    show_acquired_only = st.checkbox("Show PE-acquired only", value=False)
-
-# ── apply filters ─────────────────────────────────────────────────────────────
-df = df_all.copy()
-
-df = df[
-    df["_market_cap"].notna() &
-    (df["_market_cap"] >= mc_min * 1e9) &
-    (df["_market_cap"] <= mc_max * 1e9)
-]
-
-df = df[
-    df["_rev_growth"].notna() &
-    (df["_rev_growth"] * 100 >= rg_min) &
-    (df["_rev_growth"] * 100 <= rg_max)
-]
-
-df = df[
-    df["_ebitda_margin"].notna() &
-    (df["_ebitda_margin"] * 100 >= em_min) &
-    (df["_ebitda_margin"] * 100 <= em_max)
-]
-
-df = df[
-    df["_fcf_margin"].notna() &
-    (df["_fcf_margin"] * 100 >= fcf_min) &
-    (df["_fcf_margin"] * 100 <= fcf_max)
-]
-
-df = df[df["_ev_revenue"].notna() & (df["_ev_revenue"] <= evr_max)]
-
-if nd_max is not None:
-    df = df[df["_net_debt_ebitda"].notna() & (df["_net_debt_ebitda"] <= nd_max)]
-
-if show_acquired_only:
-    df = df[df["PE Acquired"] == True]
-
-df = df.sort_values(sort_by, ascending=sort_asc, na_position="last")
-
-# drop raw filter columns
-display_cols = ["Ticker", "Company", "Market Cap ($B)", "Revenue ($M)",
-                "Rev Growth (%)", "EBITDA Margin (%)", "FCF Margin (%)",
-                "EV / Revenue", "Net Debt / EBITDA", "PE Score", "PE Acquired"]
-df_display = df[display_cols].reset_index(drop=True)
-
-# ── main layout ───────────────────────────────────────────────────────────────
-st.title("🔍 PE Sourcing Copilot")
-st.caption("Agentic AI framework for private-equity deal sourcing — Software sector")
-
-tab1, tab2 = st.tabs(["📊 Company Screener", "📄 Sourcing Memos"])
-
-with tab1:
-    st.markdown(f"**{len(df_display)} companies** match current filters")
-
-    def highlight_acquired(row):
-        if row["PE Acquired"] == True:
-            return ["background-color: #1a472a; color: white"] * len(row)
-        return [""] * len(row)
+    display_cols = ["Ticker", "Company", "Market Cap ($B)", "Revenue ($M)",
+                    "Rev Growth (%)", "EBITDA Margin (%)", "FCF Margin (%)",
+                    "EV / Revenue", "Net Debt / EBITDA", "PE Score"]
+    df_show = df_display[display_cols].reset_index(drop=True)
 
     def color_score(val):
-        if not isinstance(val, float):
-            return ""
+        if not isinstance(val, float): return ""
         if val >= 4.5:   return "background-color: #1a6e1a; color: white"
         elif val >= 4.0: return "background-color: #4a9e2a; color: white"
         elif val >= 3.5: return "background-color: #a0c040; color: black"
@@ -188,40 +67,126 @@ with tab1:
         else:            return "background-color: #c04040; color: white"
 
     styled = (
-        df_display.style
-        .apply(highlight_acquired, axis=1)
+        df_show.style
         .map(color_score, subset=["PE Score"])
         .format({
-            "Market Cap ($B)": "{:.2f}",
-            "Revenue ($M)":    "{:,.0f}",
-            "Rev Growth (%)":  "{:.1f}%",
+            "Market Cap ($B)":   "{:.2f}",
+            "Revenue ($M)":      "{:,.0f}",
+            "Rev Growth (%)":    "{:.1f}%",
             "EBITDA Margin (%)": "{:.1f}%",
-            "FCF Margin (%)":  "{:.1f}%",
-            "EV / Revenue":    "{:.1f}x",
+            "FCF Margin (%)":    "{:.1f}%",
+            "EV / Revenue":      "{:.1f}x",
             "Net Debt / EBITDA": lambda x: f"{x:.1f}x" if pd.notna(x) else "n/a",
-            "PE Score":        "{:.2f}",
+            "PE Score":          "{:.2f}",
         }, na_rep="n/a")
     )
-
     st.dataframe(styled, use_container_width=True, hide_index=True, height=600)
-    st.caption("Green rows = verified PE take-private transactions. PE Score = buyout-fit (1–5, background calc).")
-
-    csv = df_display.to_csv(index=False)
+    st.caption(f"PE Score = buyout-fit 1–5 (background calc). {len(df_show)} companies shown.")
+    csv = df_show.to_csv(index=False)
     st.download_button("⬇ Download CSV", csv, "screener_results.csv", "text/csv")
 
-with tab2:
-    if not memos:
-        st.info("No memos found in outputs/. Run main.py locally to generate them.")
+
+# ── sidebar ───────────────────────────────────────────────────────────────────
+with st.sidebar:
+    st.header("Market filters")
+
+    mc_min, mc_max = st.slider("Market Cap ($B)", 0.1, 500.0, (1.0, 60.0), step=0.5)
+
+    st.divider()
+    st.subheader("Fundamentals")
+
+    rg_min, rg_max = st.slider("Revenue Growth (%)", -20, 100, (-20, 100), step=1)
+    em_min, em_max = st.slider("EBITDA Margin (%)", -50, 80, (-50, 80), step=1)
+    fcf_min, fcf_max = st.slider("FCF Margin (%)", -30, 60, (-30, 60), step=1)
+    evr_max = st.slider("Max EV / Revenue", 1.0, 50.0, 50.0, step=0.5)
+    nd_max = st.number_input("Max Net Debt / EBITDA", value=None,
+                              min_value=0.0, max_value=20.0, step=0.5,
+                              placeholder="No limit")
+
+    st.divider()
+    sort_by  = st.selectbox("Sort by", ["PE Score", "Market Cap ($B)", "Rev Growth (%)",
+                                         "EBITDA Margin (%)", "FCF Margin (%)",
+                                         "EV / Revenue", "Net Debt / EBITDA"])
+    sort_asc = st.checkbox("Sort ascending", value=False)
+
+    st.divider()
+    st.subheader("Data source")
+    st.caption(f"Cached: {len(universe_agent.load_cache())} companies")
+    fetch_btn = st.button("🔄 Fetch from market", type="primary", use_container_width=True,
+                           help="Query Yahoo Finance screener for your market-cap range and fetch fresh fundamentals")
+    st.caption("Use cached data instantly, or fetch live to discover new companies.")
+
+
+# ── main ──────────────────────────────────────────────────────────────────────
+st.title("🔍 PE Sourcing Copilot")
+st.caption("Live US software company screener — powered by Yahoo Finance")
+
+tab1, tab2 = st.tabs(["📊 Screener", "📄 Sourcing Memos"])
+
+with tab1:
+
+    if fetch_btn:
+        filters = {"min_market_cap": mc_min * 1e9, "max_market_cap": mc_max * 1e9}
+
+        progress_bar = st.progress(0, text="Querying Yahoo Finance screener...")
+        status_text  = st.empty()
+
+        def on_progress(done, total, ticker):
+            if total == 0: return
+            pct = done / total
+            label = f"Fetching {ticker} ... ({done}/{total})" if ticker != "done" else "Done!"
+            progress_bar.progress(pct, text=label)
+            status_text.caption(label)
+
+        profiles = universe_agent.run_live(filters, progress_cb=on_progress)
+        progress_bar.empty()
+        status_text.empty()
+        st.session_state["profiles_df"] = profiles_to_df(profiles)
+        st.success(f"Fetched {len(profiles)} software companies from Yahoo Finance.")
+
+    # load from cache if no live fetch yet
+    if "profiles_df" not in st.session_state:
+        filters = {"min_market_cap": 0, "max_market_cap": 1e18}
+        profiles = universe_agent.run_from_cache(filters)
+        if profiles:
+            st.session_state["profiles_df"] = profiles_to_df(profiles)
+
+    if "profiles_df" in st.session_state:
+        df_all = st.session_state["profiles_df"]
+
+        # apply market cap filter
+        df = df_all[
+            df_all["_market_cap"].notna() &
+            (df_all["_market_cap"] >= mc_min * 1e9) &
+            (df_all["_market_cap"] <= mc_max * 1e9)
+        ].copy()
+
+        # apply fundamental filters
+        df = apply_filters(df, rg_min, rg_max, em_min, em_max, fcf_min, fcf_max, evr_max, nd_max)
+
+        st.markdown(f"**{len(df)} companies** match current filters (from {len(df_all)} cached)")
+        render_table(df, sort_by, sort_asc)
     else:
+        st.info("No cached data yet. Click **🔄 Fetch from market** in the sidebar to pull live data from Yahoo Finance.")
+
+with tab2:
+    outputs = os.path.join(os.path.dirname(__file__), "outputs")
+    memos = {}
+    for fname in os.listdir(outputs):
+        if fname.startswith("memo_") and fname.endswith(".md"):
+            ticker = fname[5:-3]
+            with open(os.path.join(outputs, fname)) as fh:
+                memos[ticker] = fh.read()
+
+    if not memos:
+        st.info("No memos yet. Run `python main.py` locally to generate sourcing memos for the top companies.")
+    else:
+        cache = universe_agent.load_cache()
         ticker_choice = st.selectbox(
             "Select company",
             options=sorted(memos.keys()),
-            format_func=lambda t: f"{t} — {df_all[df_all['Ticker']==t]['Company'].values[0] if len(df_all[df_all['Ticker']==t]) else t}"
+            format_func=lambda t: f"{t} — {cache[t]['company_name'] if t in cache else t}"
         )
         st.markdown(memos[ticker_choice])
-        st.download_button(
-            "⬇ Download memo",
-            memos[ticker_choice],
-            f"memo_{ticker_choice}.md",
-            "text/markdown",
-        )
+        st.download_button("⬇ Download memo", memos[ticker_choice],
+                           f"memo_{ticker_choice}.md", "text/markdown")
