@@ -151,10 +151,24 @@ if "ranked" in st.session_state:
                 return ["background-color: #1a472a; color: white"] * len(row)
             return [""] * len(row)
 
+        def color_score(val):
+            if not isinstance(val, float):
+                return ""
+            if val >= 4.5:
+                return "background-color: #1a6e1a; color: white"
+            elif val >= 4.0:
+                return "background-color: #4a9e2a; color: white"
+            elif val >= 3.5:
+                return "background-color: #a0c040; color: black"
+            elif val >= 3.0:
+                return "background-color: #e0a020; color: black"
+            else:
+                return "background-color: #c04040; color: white"
+
         styled = (
             df_out.style
             .apply(highlight_acquired, axis=1)
-            .background_gradient(subset=["PE Score"], cmap="RdYlGn", vmin=1, vmax=5)
+            .applymap(color_score, subset=["PE Score"])
             .format({"PE Score": "{:.2f}"})
         )
         st.dataframe(styled, use_container_width=True, hide_index=True)
