@@ -17,22 +17,60 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 CACHE_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "cache.json")
 
+REGION_LABELS = {
+    'us': 'United States', 'gb': 'United Kingdom', 'de': 'Germany',
+    'fr': 'France',        'ca': 'Canada',          'au': 'Australia',
+    'jp': 'Japan',         'cn': 'China',            'hk': 'Hong Kong',
+    'in': 'India',         'se': 'Sweden',           'nl': 'Netherlands',
+    'il': 'Israel',        'kr': 'South Korea',      'sg': 'Singapore',
+    'tw': 'Taiwan',        'br': 'Brazil',            'ch': 'Switzerland',
+    'es': 'Spain',         'it': 'Italy',             'ie': 'Ireland',
+    'dk': 'Denmark',       'no': 'Norway',            'fi': 'Finland',
+    'be': 'Belgium',       'nz': 'New Zealand',       'mx': 'Mexico',
+}
+
+ALL_SECTORS = [
+    'Technology', 'Communication Services', 'Financial Services',
+    'Healthcare', 'Consumer Cyclical', 'Consumer Defensive',
+    'Industrials', 'Basic Materials', 'Real Estate', 'Energy', 'Utilities',
+]
+
 
 # ── screener ──────────────────────────────────────────────────────────────────
 
-def _screen_tickers(min_cap: float, max_cap: float) -> list[str]:
+def _screen_tickers(min_cap: float, max_cap: float,
+                    regions=None, sectors=None) -> list:
     """
-    Query Yahoo Finance screener for Technology sector companies in the
-    given market-cap range. Returns a list of ticker symbols.
+    Query Yahoo Finance screener for each region × sector combination.
+    Returns a deduplicated list of ticker symbols.
     """
-    q = EquityQuery('and', [
-        EquityQuery('eq', ['sector', 'Technology']),
-        EquityQuery('gt', ['intradaymarketcap', int(min_cap)]),
-        EquityQuery('lt', ['intradaymarketcap', int(max_cap)]),
-    ])
-    results = yf.screen(q, size=250, sortField='intradaymarketcap', sortAsc=False)
-    quotes = results.get('quotes', [])
-    return [q['symbol'] for q in quotes if q.get('symbol')]
+    regions = regions or ['us']
+    sectors = sectors or ['Technology']
+
+    all_tickers = []
+    for region in regions:
+        for sector in sectors:
+            clauses = [
+                EquityQuery('eq', ['region', region]),
+                EquityQuery('eq', ['sector', sector]),
+                EquityQuery('gt', ['intradaymarketcap', int(min_cap)]),
+                EquityQuery('lt', ['intradaymarketcap', int(max_cap)]),
+            ]
+            try:
+                results = yf.screen(EquityQuery('and', clauses),
+                                    size=250, sortField='intradaymarketcap', sortAsc=False)
+                all_tickers.extend(
+                    qt['symbol'] for qt in results.get('quotes', []) if qt.get('symbol')
+                )
+            except Exception as e:
+                print(f"  [UniverseAgent] screener error ({region}/{sector}): {e}")
+
+    seen, unique = set(), []
+    for t in all_tickers:
+        if t not in seen:
+            seen.add(t)
+            unique.append(t)
+    return unique
 
 
 # ── profile builder ───────────────────────────────────────────────────────────
@@ -83,6 +121,7 @@ def _build_profile(ticker: str) -> dict:
         "description":     _safe(info, 'longBusinessSummary'),
         "industry":        industry,
         "sector_yf":       _safe(info, 'sector'),
+        "country":         _safe(info, 'country'),
         "market_cap":      market_cap,
         "revenue":         revenue,
         "ebitda":          ebitda,
@@ -118,7 +157,7 @@ def save_cache(cache: dict):
 def run_live(filters: dict, progress_cb=None) -> dict:
     """
     Full live fetch:
-      1. Screen Yahoo Finance for tickers matching market-cap range
+      1. Screen Yahoo Finance for tickers matching all filters
       2. Fetch fundamentals for uncached tickers
       3. Update cache and return all profiles
 
@@ -126,9 +165,13 @@ def run_live(filters: dict, progress_cb=None) -> dict:
     """
     min_cap = filters.get('min_market_cap', 1e9)
     max_cap = filters.get('max_market_cap', 60e9)
+    regions = filters.get('regions') or ['us']
+    sectors = filters.get('sectors') or ['Technology']
 
-    print(f"[UniverseAgent] screening Yahoo Finance for Technology ${min_cap/1e9:.0f}B–${max_cap/1e9:.0f}B ...")
-    tickers = _screen_tickers(min_cap, max_cap)
+    print(f"[UniverseAgent] screening Yahoo Finance "
+          f"regions={regions} sectors={sectors} "
+          f"${min_cap/1e9:.0f}B–${max_cap/1e9:.0f}B ...")
+    tickers = _screen_tickers(min_cap, max_cap, regions=regions, sectors=sectors)
     print(f"[UniverseAgent] screener returned {len(tickers)} tickers")
 
     cache = load_cache()

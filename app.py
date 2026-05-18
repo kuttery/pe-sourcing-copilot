@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 st.set_page_config(page_title="PE Sourcing Copilot", page_icon="🔍", layout="wide")
 
 from agents import universe_agent, scoring_agent
+from agents.universe_agent import REGION_LABELS, ALL_SECTORS
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -22,6 +23,9 @@ def profiles_to_df(profiles: dict) -> pd.DataFrame:
         rows.append({
             "Ticker":              ticker,
             "Company":             p.get("company_name", ticker),
+            "Country":             p.get("country") or "—",
+            "Sector":              p.get("sector_yf") or "—",
+            "Industry":            p.get("industry") or "—",
             "Market Cap ($B)":     round(p["market_cap"] / 1e9, 2) if p.get("market_cap") else None,
             "Revenue ($M)":        round(p["revenue"] / 1e6, 0)    if p.get("revenue")     else None,
             "Rev Growth (%)":      round(p["revenue_growth"] * 100, 1) if p.get("revenue_growth") is not None else None,
@@ -36,24 +40,33 @@ def profiles_to_df(profiles: dict) -> pd.DataFrame:
             "_fcf_margin":         p.get("fcf_margin"),
             "_ev_revenue":         p.get("ev_revenue"),
             "_net_debt_ebitda":    p.get("net_debt_ebitda"),
+            "_country":            p.get("country") or "",
+            "_industry":           p.get("industry") or "",
+            "_sector":             p.get("sector_yf") or "",
         })
     return pd.DataFrame(rows)
 
 
-def apply_filters(df, rg_min, rg_max, em_min, em_max, fcf_min, fcf_max, evr_max, nd_max):
+def apply_filters(df, rg_min, rg_max, em_min, em_max, fcf_min, fcf_max,
+                  evr_max, nd_max, countries, industries):
     df = df[df["_rev_growth"].notna() & (df["_rev_growth"]*100 >= rg_min) & (df["_rev_growth"]*100 <= rg_max)]
     df = df[df["_ebitda_margin"].notna() & (df["_ebitda_margin"]*100 >= em_min) & (df["_ebitda_margin"]*100 <= em_max)]
     df = df[df["_fcf_margin"].notna() & (df["_fcf_margin"]*100 >= fcf_min) & (df["_fcf_margin"]*100 <= fcf_max)]
     df = df[df["_ev_revenue"].notna() & (df["_ev_revenue"] <= evr_max)]
     if nd_max is not None:
         df = df[df["_net_debt_ebitda"].notna() & (df["_net_debt_ebitda"] <= nd_max)]
+    if countries:
+        df = df[df["_country"].isin(countries)]
+    if industries:
+        df = df[df["_industry"].isin(industries)]
     return df
 
 
 def render_table(df_display, sort_by, sort_asc):
     df_display = df_display.sort_values(sort_by, ascending=sort_asc, na_position="last")
 
-    display_cols = ["Ticker", "Company", "Market Cap ($B)", "Revenue ($M)",
+    display_cols = ["Ticker", "Company", "Country", "Industry",
+                    "Market Cap ($B)", "Revenue ($M)",
                     "Rev Growth (%)", "EBITDA Margin (%)", "FCF Margin (%)",
                     "EV / Revenue", "Net Debt / EBITDA", "PE Score"]
     df_show = df_display[display_cols].reset_index(drop=True)
@@ -90,18 +103,43 @@ def render_table(df_display, sort_by, sort_asc):
 with st.sidebar:
     st.header("Market filters")
 
+    # Geography
+    region_options = {v: k for k, v in REGION_LABELS.items()}  # label -> code
+    selected_countries = st.multiselect(
+        "Countries / Regions",
+        options=sorted(REGION_LABELS.values()),
+        default=["United States"],
+        help="Used when fetching live data. Filters cached results by country."
+    )
+    selected_region_codes = [region_options[c] for c in selected_countries if c in region_options]
+
+    # Sector
+    selected_sectors = st.multiselect(
+        "Sectors",
+        options=ALL_SECTORS,
+        default=["Technology"],
+        help="Used when fetching live data from Yahoo Finance screener."
+    )
+
+    # Market cap
     mc_min, mc_max = st.slider("Market Cap ($B)", 0.1, 500.0, (1.0, 60.0), step=0.5)
 
     st.divider()
     st.subheader("Fundamentals")
 
-    rg_min, rg_max = st.slider("Revenue Growth (%)", -20, 100, (-20, 100), step=1)
-    em_min, em_max = st.slider("EBITDA Margin (%)", -50, 80, (-50, 80), step=1)
-    fcf_min, fcf_max = st.slider("FCF Margin (%)", -30, 60, (-30, 60), step=1)
-    evr_max = st.slider("Max EV / Revenue", 1.0, 50.0, 50.0, step=0.5)
-    nd_max = st.number_input("Max Net Debt / EBITDA", value=None,
-                              min_value=0.0, max_value=20.0, step=0.5,
-                              placeholder="No limit")
+    rg_min, rg_max   = st.slider("Revenue Growth (%)",  -20, 100, (-20, 100), step=1)
+    em_min, em_max   = st.slider("EBITDA Margin (%)",   -50,  80,  (-50,  80), step=1)
+    fcf_min, fcf_max = st.slider("FCF Margin (%)",      -30,  60,  (-30,  60), step=1)
+    evr_max  = st.slider("Max EV / Revenue", 1.0, 50.0, 50.0, step=0.5)
+    nd_max   = st.number_input("Max Net Debt / EBITDA", value=None,
+                                min_value=0.0, max_value=20.0, step=0.5,
+                                placeholder="No limit")
+
+    # Industry filter — built from cached data
+    cache_now = universe_agent.load_cache()
+    all_industries = sorted({p.get("industry","") for p in cache_now.values() if p.get("industry")})
+    selected_industries = st.multiselect("Industry (from cache)", options=all_industries,
+                                          default=[], placeholder="All industries")
 
     st.divider()
     sort_by  = st.selectbox("Sort by", ["PE Score", "Market Cap ($B)", "Rev Growth (%)",
@@ -111,10 +149,10 @@ with st.sidebar:
 
     st.divider()
     st.subheader("Data source")
-    st.caption(f"Cached: {len(universe_agent.load_cache())} companies")
+    st.caption(f"Cached: {len(cache_now)} companies")
     fetch_btn = st.button("🔄 Fetch from market", type="primary", use_container_width=True,
-                           help="Query Yahoo Finance screener for your market-cap range and fetch fresh fundamentals")
-    st.caption("Use cached data instantly, or fetch live to discover new companies.")
+                           help="Query Yahoo screener with selected countries + sectors, fetch fresh fundamentals")
+    st.caption("Filters apply to cached data instantly. Click Fetch to pull new companies from Yahoo Finance.")
 
 
 # ── main ──────────────────────────────────────────────────────────────────────
@@ -126,7 +164,12 @@ tab1, tab2 = st.tabs(["📊 Screener", "📄 Sourcing Memos"])
 with tab1:
 
     if fetch_btn:
-        filters = {"min_market_cap": mc_min * 1e9, "max_market_cap": mc_max * 1e9}
+        filters = {
+            "min_market_cap": mc_min * 1e9,
+            "max_market_cap": mc_max * 1e9,
+            "regions":  selected_region_codes or ['us'],
+            "sectors":  selected_sectors or ['Technology'],
+        }
 
         progress_bar = st.progress(0, text="Querying Yahoo Finance screener...")
         status_text  = st.empty()
@@ -162,7 +205,10 @@ with tab1:
         ].copy()
 
         # apply fundamental filters
-        df = apply_filters(df, rg_min, rg_max, em_min, em_max, fcf_min, fcf_max, evr_max, nd_max)
+        # country filter from multiselect
+        country_filter = selected_countries if selected_countries else []
+        df = apply_filters(df, rg_min, rg_max, em_min, em_max, fcf_min, fcf_max,
+                           evr_max, nd_max, country_filter, selected_industries)
 
         st.markdown(f"**{len(df)} companies** match current filters (from {len(df_all)} cached)")
         render_table(df, sort_by, sort_asc)
