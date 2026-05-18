@@ -61,9 +61,14 @@ def apply_filters(df, rg_min, rg_max, em_min, em_max, fcf_min, fcf_max,
     if nd_max is not None:
         df = df[df["_net_debt_ebitda"].notna() & (df["_net_debt_ebitda"] <= nd_max)]
     if countries and "_country" in df.columns:
-        df = df[df["_country"].isin(countries)]
+        # Only apply country filter if at least some rows have country data.
+        # eval_cache profiles are US-only but lack a country field; skipping
+        # the filter rather than silently returning 0 results.
+        if df["_country"].str.strip().ne("").any():
+            df = df[df["_country"].isin(countries)]
     if industries and "_industry" in df.columns:
-        df = df[df["_industry"].isin(industries)]
+        if df["_industry"].str.strip().ne("").any():
+            df = df[df["_industry"].isin(industries)]
     return df
 
 
@@ -311,6 +316,9 @@ with st.sidebar:
         )
         selected_region_codes = [region_options[c] for c in selected_countries
                                  if c in region_options]
+        if selected_countries:
+            st.caption("Country filter applies to live-fetched data. "
+                       "Cached data is U.S. Software only.")
         selected_sectors = st.multiselect(
             "Sectors", options=ALL_SECTORS, default=["Technology"],
             help="Used when fetching from Yahoo Finance screener.",
