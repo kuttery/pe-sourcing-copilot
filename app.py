@@ -9,7 +9,7 @@ import streamlit as st
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-st.set_page_config(page_title="PE Sourcing Copilot", page_icon="🔍", layout="wide")
+st.set_page_config(page_title="PE Sourcing Copilot", layout="wide")
 
 from pe_style import (load_css, score_badge, deal_card_open, deal_card_close,
                       filter_count, section, CHART_COLORS)
@@ -102,7 +102,7 @@ def render_table(df_display, sort_by, sort_asc):
     )
     st.dataframe(styled, use_container_width=True, hide_index=True, height=560)
     csv = df_show.to_csv(index=False)
-    st.download_button("⬇ Download CSV", csv, "screener_results.csv", "text/csv")
+    st.download_button("Download CSV", csv, "screener_results.csv", "text/csv")
 
 
 def render_charts(df):
@@ -292,16 +292,16 @@ def render_deal_card(ticker: str, df: pd.DataFrame, profiles: dict):
 
 # ── sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("## 🔍 Filters")
+    st.markdown("## Filters")
 
     count_slot = st.empty()   # filled after filtering
 
     st.divider()
-    fetch_btn = st.button("🔄 Fetch from market", type="primary",
+    fetch_btn = st.button("Refresh from market", type="primary",
                           use_container_width=True,
                           help="Query Yahoo screener + fetch fresh fundamentals")
 
-    with st.expander("🌍 Geography & Sector", expanded=True):
+    with st.expander("Geography & Sector", expanded=True):
         region_options    = {v: k for k, v in REGION_LABELS.items()}
         selected_countries = st.multiselect(
             "Countries / Regions",
@@ -316,11 +316,11 @@ with st.sidebar:
             help="Used when fetching from Yahoo Finance screener.",
         )
 
-    with st.expander("📐 Scale", expanded=True):
+    with st.expander("Scale", expanded=True):
         mc_min, mc_max = st.slider("Market Cap ($B)", 0.1, 500.0,
                                    (1.0, 60.0), step=0.5)
 
-    with st.expander("📊 Financials", expanded=False):
+    with st.expander("Financials", expanded=False):
         rg_min,  rg_max  = st.slider("Revenue Growth (%)",  -20, 100, (-20, 100), step=1)
         em_min,  em_max  = st.slider("EBITDA Margin (%)",   -50,  80, (-50,  80), step=1)
         fcf_min, fcf_max = st.slider("FCF Margin (%)",      -30,  60, (-30,  60), step=1)
@@ -336,7 +336,7 @@ with st.sidebar:
             placeholder="All industries",
         )
 
-    with st.expander("⚙️ Sort & Display", expanded=False):
+    with st.expander("Sort & Display", expanded=False):
         sort_by  = st.selectbox("Sort by",
                                 ["PE Score", "Market Cap ($B)", "Rev Growth (%)",
                                  "EBITDA Margin (%)", "FCF Margin (%)",
@@ -348,10 +348,10 @@ with st.sidebar:
 
 
 # ── main ──────────────────────────────────────────────────────────────────────
-st.title("🔍 PE Sourcing Copilot")
+st.title("PE Sourcing Copilot")
 st.caption("Software company screener for PE buyout sourcing — powered by Yahoo Finance")
 
-tab1, tab2 = st.tabs(["📊 Screener", "📄 Sourcing Memos"])
+tab1, tab2 = st.tabs(["Screener", "Sourcing Memos"])
 
 with tab1:
 
@@ -455,10 +455,10 @@ with tab1:
             if selected_ticker and profiles:
                 render_deal_card(selected_ticker, df, profiles)
             elif selected_ticker:
-                st.info("Click **🔄 Fetch from market** to load full profiles.")
+                st.info("Click **Refresh from market** to load full profiles.")
 
     else:
-        st.info("No cached data yet. Click **🔄 Fetch from market** in the sidebar.")
+        st.info("No cached data yet. Click **Refresh from market** in the sidebar.")
 
 
 # ── Tab 2: Sourcing Memos ─────────────────────────────────────────────────────
@@ -483,5 +483,5 @@ with tab2:
                                    if t in cache else t),
         )
         st.markdown(memos[ticker_choice])
-        st.download_button("⬇ Download memo", memos[ticker_choice],
+        st.download_button("Download memo", memos[ticker_choice],
                            f"memo_{ticker_choice}.md", "text/markdown")
