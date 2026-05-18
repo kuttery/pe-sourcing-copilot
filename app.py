@@ -1,6 +1,5 @@
 """
-app.py — Streamlit UI for the PE Sourcing Copilot.
-
+app.py — PE Sourcing Copilot — reactive financial screener
 Run with:  streamlit run app.py
 """
 import os, sys, json
@@ -9,264 +8,220 @@ import streamlit as st
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-# ── page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="PE Sourcing Copilot",
     page_icon="🔍",
     layout="wide",
 )
 
+# ── load data once at startup ─────────────────────────────────────────────────
+@st.cache_data
+def load_data():
+    cache_path = os.path.join(os.path.dirname(__file__), "data", "cache.json")
+    universe_path = os.path.join(os.path.dirname(__file__), "data", "universe.csv")
+
+    with open(cache_path) as f:
+        cache = json.load(f)
+
+    universe_df = pd.read_csv(universe_path)
+    labels = dict(zip(universe_df["ticker"], universe_df["pe_acquired"]))
+
+    # score in background
+    sys.path.insert(0, os.path.dirname(__file__))
+    from agents import scoring_agent
+    scores = {t: scoring_agent.score_company(p) for t, p in cache.items()}
+
+    rows = []
+    for ticker, p in cache.items():
+        s = scores.get(ticker, {})
+        rows.append({
+            "Ticker":         ticker,
+            "Company":        p.get("company_name", ticker),
+            "Market Cap ($B)": round(p["market_cap"] / 1e9, 2) if p.get("market_cap") else None,
+            "Revenue ($M)":   round(p["revenue"] / 1e6, 0) if p.get("revenue") else None,
+            "Rev Growth (%)": round(p["revenue_growth"] * 100, 1) if p.get("revenue_growth") is not None else None,
+            "EBITDA Margin (%)": round(p["ebitda_margin"] * 100, 1) if p.get("ebitda_margin") is not None else None,
+            "FCF Margin (%)": round(p["fcf_margin"] * 100, 1) if p.get("fcf_margin") is not None else None,
+            "EV / Revenue":   round(p["ev_revenue"], 1) if p.get("ev_revenue") else None,
+            "Net Debt / EBITDA": round(p["net_debt_ebitda"], 1) if p.get("net_debt_ebitda") is not None else None,
+            "PE Score":       s.get("pe_score"),
+            "PE Acquired":    bool(labels.get(ticker, 0)),
+            # raw for filtering
+            "_market_cap":    p.get("market_cap"),
+            "_rev_growth":    p.get("revenue_growth"),
+            "_ebitda_margin": p.get("ebitda_margin"),
+            "_fcf_margin":    p.get("fcf_margin"),
+            "_ev_revenue":    p.get("ev_revenue"),
+            "_net_debt_ebitda": p.get("net_debt_ebitda"),
+        })
+
+    return pd.DataFrame(rows)
+
+
+@st.cache_data
+def load_memos():
+    outputs = os.path.join(os.path.dirname(__file__), "outputs")
+    memos = {}
+    for f in os.listdir(outputs):
+        if f.startswith("memo_") and f.endswith(".md"):
+            ticker = f[5:-3]
+            with open(os.path.join(outputs, f)) as fh:
+                memos[ticker] = fh.read()
+    return memos
+
+
+df_all = load_data()
+memos = load_memos()
+
+# ── sidebar filters ───────────────────────────────────────────────────────────
+with st.sidebar:
+    st.header("Filters")
+
+    # market cap
+    mc_min, mc_max = st.slider(
+        "Market Cap ($B)", min_value=0.1, max_value=100.0,
+        value=(1.0, 60.0), step=0.5
+    )
+
+    # revenue growth
+    rg_min, rg_max = st.slider(
+        "Revenue Growth (%)", min_value=-20, max_value=60,
+        value=(-20, 60), step=1
+    )
+
+    # ebitda margin
+    em_min, em_max = st.slider(
+        "EBITDA Margin (%)", min_value=-50, max_value=60,
+        value=(-50, 60), step=1
+    )
+
+    # fcf margin
+    fcf_min, fcf_max = st.slider(
+        "FCF Margin (%)", min_value=-30, max_value=50,
+        value=(-30, 50), step=1
+    )
+
+    # ev/revenue
+    evr_max = st.slider("Max EV / Revenue", min_value=1.0, max_value=30.0, value=30.0, step=0.5)
+
+    # net debt / ebitda
+    nd_max = st.number_input("Max Net Debt / EBITDA (blank = no limit)", value=None,
+                              min_value=0.0, max_value=20.0, step=0.5,
+                              placeholder="No limit")
+
+    st.divider()
+
+    # sort
+    sort_by = st.selectbox("Sort by", [
+        "PE Score", "Market Cap ($B)", "Rev Growth (%)",
+        "EBITDA Margin (%)", "FCF Margin (%)", "EV / Revenue", "Net Debt / EBITDA"
+    ])
+    sort_asc = st.checkbox("Sort ascending", value=False)
+
+    st.divider()
+    show_acquired_only = st.checkbox("Show PE-acquired only", value=False)
+
+# ── apply filters ─────────────────────────────────────────────────────────────
+df = df_all.copy()
+
+df = df[
+    df["_market_cap"].notna() &
+    (df["_market_cap"] >= mc_min * 1e9) &
+    (df["_market_cap"] <= mc_max * 1e9)
+]
+
+df = df[
+    df["_rev_growth"].notna() &
+    (df["_rev_growth"] * 100 >= rg_min) &
+    (df["_rev_growth"] * 100 <= rg_max)
+]
+
+df = df[
+    df["_ebitda_margin"].notna() &
+    (df["_ebitda_margin"] * 100 >= em_min) &
+    (df["_ebitda_margin"] * 100 <= em_max)
+]
+
+df = df[
+    df["_fcf_margin"].notna() &
+    (df["_fcf_margin"] * 100 >= fcf_min) &
+    (df["_fcf_margin"] * 100 <= fcf_max)
+]
+
+df = df[df["_ev_revenue"].notna() & (df["_ev_revenue"] <= evr_max)]
+
+if nd_max is not None:
+    df = df[df["_net_debt_ebitda"].notna() & (df["_net_debt_ebitda"] <= nd_max)]
+
+if show_acquired_only:
+    df = df[df["PE Acquired"] == True]
+
+df = df.sort_values(sort_by, ascending=sort_asc, na_position="last")
+
+# drop raw filter columns
+display_cols = ["Ticker", "Company", "Market Cap ($B)", "Revenue ($M)",
+                "Rev Growth (%)", "EBITDA Margin (%)", "FCF Margin (%)",
+                "EV / Revenue", "Net Debt / EBITDA", "PE Score", "PE Acquired"]
+df_display = df[display_cols].reset_index(drop=True)
+
+# ── main layout ───────────────────────────────────────────────────────────────
 st.title("🔍 PE Sourcing Copilot")
 st.caption("Agentic AI framework for private-equity deal sourcing — Software sector")
 
-# ── sidebar: filters ─────────────────────────────────────────────────────────
-with st.sidebar:
-    st.header("Pipeline filters")
+tab1, tab2 = st.tabs(["📊 Company Screener", "📄 Sourcing Memos"])
 
-    sector = st.selectbox("Sector", ["Software", "Technology", "Healthcare"], index=0)
+with tab1:
+    st.markdown(f"**{len(df_display)} companies** match current filters")
 
-    col1, col2 = st.columns(2)
-    min_cap = col1.number_input("Min market cap ($B)", value=1.0, step=0.5, min_value=0.1)
-    max_cap = col2.number_input("Max market cap ($B)", value=60.0, step=5.0, min_value=1.0)
+    def highlight_acquired(row):
+        if row["PE Acquired"] == True:
+            return ["background-color: #1a472a; color: white"] * len(row)
+        return [""] * len(row)
 
-    top_k = st.slider("Top-K for memos", min_value=1, max_value=10, value=5)
+    def color_score(val):
+        if not isinstance(val, float):
+            return ""
+        if val >= 4.5:   return "background-color: #1a6e1a; color: white"
+        elif val >= 4.0: return "background-color: #4a9e2a; color: white"
+        elif val >= 3.5: return "background-color: #a0c040; color: black"
+        elif val >= 3.0: return "background-color: #e0a020; color: black"
+        else:            return "background-color: #c04040; color: white"
 
-    use_cache = st.checkbox("Use cached financial data", value=True,
-                            help="Uncheck to re-fetch from yfinance (slow, ~2 min)")
-
-    gen_memos = st.checkbox("Generate LLM memos (uses Claude API)", value=True)
-
-    run_btn = st.button("▶  Run pipeline", type="primary", use_container_width=True)
-
-    st.divider()
-    st.caption("Pipeline: Universe → Data → Scoring → Ranking → Memos")
-
-# ── helpers ───────────────────────────────────────────────────────────────────
-SCORE_COLOR = {5: "🟢", 4: "🟡", 3: "🟠", 2: "🔴", 1: "🔴"}
-
-def score_bar(v):
-    filled = round(v)
-    return "█" * filled + "░" * (5 - filled) + f"  {v:.2f}"
-
-
-def run_pipeline(filters, use_cache, gen_memos, top_k):
-    from agents import universe_agent, data_agent, scoring_agent, memo_agent
-    from config import TOP_K
-
-    status = st.status("Running pipeline…", expanded=True)
-
-    with status:
-        st.write("**[1/4] Universe Agent** — filtering candidate universe…")
-        universe_df = universe_agent.run(filters)
-        st.write(f"→ {len(universe_df)} candidates after static filters")
-
-        st.write("**[2/4] Data Retrieval Agent** — loading financial profiles…")
-        profiles = data_agent.run(universe_df, use_cache=use_cache)
-
-        # market-cap filter
-        min_mc = filters.get("min_market_cap", 0)
-        max_mc = filters.get("max_market_cap", 1e18)
-        profiles = {t: p for t, p in profiles.items()
-                    if p.get("market_cap") and min_mc <= p["market_cap"] <= max_mc}
-        st.write(f"→ {len(profiles)} profiles after market-cap filter")
-
-        st.write("**[3/4] PE Scoring Agent** — computing buyout-fit scores…")
-        scores = scoring_agent.run(profiles)
-
-        ranked = sorted(scores.values(), key=lambda x: x["pe_score"], reverse=True)
-        top_tickers = [r["ticker"] for r in ranked[:top_k]]
-        st.write(f"→ top-{top_k} tickers: {', '.join(top_tickers)}")
-
-        memos = {}
-        if gen_memos:
-            st.write("**[4/4] Memo Agent** — generating sourcing memos…")
-            memos = memo_agent.run(profiles, scores, top_tickers)
-        else:
-            st.write("**[4/4] Memo Agent** — skipped (checkbox unchecked)")
-
-        status.update(label="Pipeline complete ✓", state="complete", expanded=False)
-
-    return universe_df, profiles, scores, ranked, memos
-
-
-# ── main area ─────────────────────────────────────────────────────────────────
-if run_btn:
-    filters = {
-        "sector": sector,
-        "geography": None,
-        "min_market_cap": min_cap * 1e9,
-        "max_market_cap": max_cap * 1e9,
-    }
-
-    universe_df, profiles, scores, ranked, memos = run_pipeline(
-        filters, use_cache, gen_memos, top_k
+    styled = (
+        df_display.style
+        .apply(highlight_acquired, axis=1)
+        .map(color_score, subset=["PE Score"])
+        .format({
+            "Market Cap ($B)": "{:.2f}",
+            "Revenue ($M)":    "{:,.0f}",
+            "Rev Growth (%)":  "{:.1f}%",
+            "EBITDA Margin (%)": "{:.1f}%",
+            "FCF Margin (%)":  "{:.1f}%",
+            "EV / Revenue":    "{:.1f}x",
+            "Net Debt / EBITDA": lambda x: f"{x:.1f}x" if pd.notna(x) else "n/a",
+            "PE Score":        "{:.2f}",
+        }, na_rep="n/a")
     )
 
-    # store in session state so tabs render after button press
-    st.session_state["ranked"] = ranked
-    st.session_state["profiles"] = profiles
-    st.session_state["memos"] = memos
-    st.session_state["universe_df"] = universe_df
+    st.dataframe(styled, use_container_width=True, hide_index=True, height=600)
+    st.caption("Green rows = verified PE take-private transactions. PE Score = buyout-fit (1–5, background calc).")
 
-# render results from session state (persists across re-renders)
-if "ranked" in st.session_state:
-    ranked = st.session_state["ranked"]
-    profiles = st.session_state["profiles"]
-    memos = st.session_state["memos"]
-    universe_df = st.session_state["universe_df"]
+    csv = df_display.to_csv(index=False)
+    st.download_button("⬇ Download CSV", csv, "screener_results.csv", "text/csv")
 
-    tab1, tab2, tab3 = st.tabs(["📊 Ranked Shortlist", "📄 Sourcing Memos", "📈 Score Breakdown"])
-
-    # ── tab 1: ranked shortlist ──────────────────────────────────────────────
-    with tab1:
-        st.subheader("Ranked shortlist — buyout-fit scores")
-
-        # load ground truth labels
-        universe_labels = dict(zip(universe_df["ticker"], universe_df["pe_acquired"]))
-
-        rows = []
-        for i, r in enumerate(ranked, 1):
-            t = r["ticker"]
-            acquired = universe_labels.get(t, 0)
-            rows.append({
-                "Rank": i,
-                "Ticker": t,
-                "Company": r["company_name"],
-                "PE Score": r["pe_score"],
-                "Score Bar": score_bar(r["pe_score"]),
-                "PE Acquired ✓": "✓" if acquired else "",
-                "Scale": r["subscores"].get("scale_fit", "—"),
-                "Valuation": r["subscores"].get("valuation_attractiveness", "—"),
-                "Cash Flow": r["subscores"].get("cash_flow_stability", "—"),
-                "Headroom": r["subscores"].get("improvement_headroom", "—"),
-                "Growth": r["subscores"].get("growth_moderation", "—"),
-                "Leverage": r["subscores"].get("leverage_capacity", "—"),
-            })
-
-        df_out = pd.DataFrame(rows)
-
-        # highlight PE-acquired rows
-        def highlight_acquired(row):
-            if row["PE Acquired ✓"] == "✓":
-                return ["background-color: #1a472a; color: white"] * len(row)
-            return [""] * len(row)
-
-        def color_score(val):
-            if not isinstance(val, float):
-                return ""
-            if val >= 4.5:
-                return "background-color: #1a6e1a; color: white"
-            elif val >= 4.0:
-                return "background-color: #4a9e2a; color: white"
-            elif val >= 3.5:
-                return "background-color: #a0c040; color: black"
-            elif val >= 3.0:
-                return "background-color: #e0a020; color: black"
-            else:
-                return "background-color: #c04040; color: white"
-
-        styled = (
-            df_out.style
-            .apply(highlight_acquired, axis=1)
-            .map(color_score, subset=["PE Score"])
-            .format({"PE Score": "{:.2f}"})
-        )
-        st.dataframe(styled, use_container_width=True, hide_index=True)
-        st.caption("Green rows = verified PE-acquired companies. Score bar filled out of 5.")
-
-        csv = df_out.to_csv(index=False)
-        st.download_button("⬇ Download CSV", csv, "ranked_shortlist.csv", "text/csv")
-
-    # ── tab 2: memos ────────────────────────────────────────────────────────
-    with tab2:
-        if not memos:
-            st.info("No memos generated. Enable 'Generate LLM memos' and re-run.")
-        else:
-            ticker_choice = st.selectbox(
-                "Select company",
-                options=list(memos.keys()),
-                format_func=lambda t: f"{t} — {profiles[t].get('company_name', t)}"
-            )
-            st.markdown(memos[ticker_choice])
-            st.download_button(
-                "⬇ Download memo",
-                memos[ticker_choice],
-                f"memo_{ticker_choice}.md",
-                "text/markdown",
-            )
-
-    # ── tab 3: score breakdown ───────────────────────────────────────────────
-    with tab3:
-        st.subheader("Subscore detail")
-        ticker_choice2 = st.selectbox(
+with tab2:
+    if not memos:
+        st.info("No memos found in outputs/. Run main.py locally to generate them.")
+    else:
+        ticker_choice = st.selectbox(
             "Select company",
-            options=[r["ticker"] for r in ranked],
-            format_func=lambda t: f"{t} — {profiles[t].get('company_name', t)}",
-            key="breakdown_picker",
+            options=sorted(memos.keys()),
+            format_func=lambda t: f"{t} — {df_all[df_all['Ticker']==t]['Company'].values[0] if len(df_all[df_all['Ticker']==t]) else t}"
         )
-
-        r = next(x for x in ranked if x["ticker"] == ticker_choice2)
-        p = profiles[ticker_choice2]
-
-        c1, c2, c3 = st.columns(3)
-        c1.metric("PE Score", f"{r['pe_score']:.2f} / 5")
-        c2.metric("Market Cap", f"${p.get('market_cap', 0)/1e9:.1f}B" if p.get("market_cap") else "n/a")
-        c3.metric("EV/Revenue", f"{p.get('ev_revenue', 0):.1f}x" if p.get("ev_revenue") else "n/a")
-
-        st.divider()
-
-        subscore_labels = {
-            "scale_fit": "Scale Fit",
-            "valuation_attractiveness": "Valuation Attractiveness",
-            "cash_flow_stability": "Cash Flow Stability",
-            "improvement_headroom": "Improvement Headroom",
-            "growth_moderation": "Growth Moderation",
-            "leverage_capacity": "Leverage Capacity",
-        }
-
-        for key, label in subscore_labels.items():
-            score_val = r["subscores"].get(key)
-            rationale = r["rationales"].get(key, "")
-            if score_val is not None:
-                emoji = SCORE_COLOR.get(score_val, "⚪")
-                st.markdown(f"**{label}** &nbsp; {emoji} {score_val}/5 &nbsp; — &nbsp; *{rationale}*")
-                st.progress(score_val / 5)
-            else:
-                st.markdown(f"**{label}** &nbsp; ⚪ n/a — *{rationale}*")
-
-        st.divider()
-        st.subheader("Raw financials")
-        fin_cols = {
-            "Revenue": p.get("revenue"), "EBITDA margin": p.get("ebitda_margin"),
-            "FCF margin": p.get("fcf_margin"), "Revenue growth": p.get("revenue_growth"),
-            "Net debt/EBITDA": p.get("net_debt_ebitda"), "EV/Revenue": p.get("ev_revenue"),
-        }
-        fin_rows = []
-        for k, v in fin_cols.items():
-            if v is None:
-                fin_rows.append({"Metric": k, "Value": "n/a"})
-            elif k in ("Revenue",):
-                fin_rows.append({"Metric": k, "Value": f"${v/1e6:,.0f}M"})
-            elif k in ("EBITDA margin", "FCF margin", "Revenue growth"):
-                fin_rows.append({"Metric": k, "Value": f"{v*100:.1f}%"})
-            else:
-                fin_rows.append({"Metric": k, "Value": f"{v:.2f}x"})
-        st.dataframe(pd.DataFrame(fin_rows), hide_index=True, use_container_width=False)
-
-else:
-    st.info("Set your filters in the sidebar and click **▶ Run pipeline** to start.")
-
-    with st.expander("How it works"):
-        st.markdown("""
-**Five-agent sequential pipeline:**
-
-1. **Universe Agent** — filters `data/universe.csv` by sector / geography
-2. **Data Retrieval Agent** — fetches financial profiles from yfinance (cached to disk)
-3. **PE Scoring Agent** — scores each company 1–5 on six buyout-fit dimensions
-   (scale fit, valuation, cash flow, improvement headroom, growth moderation, leverage)
-4. **Coordinator** — ranks by weighted score, selects top-K
-5. **Memo Agent** — calls Claude to write a structured sourcing memo for each top-K company
-
-**Design principle:** scoring is fully deterministic and auditable. The LLM is used only
-to write narrative memos, never to assign scores.
-        """)
+        st.markdown(memos[ticker_choice])
+        st.download_button(
+            "⬇ Download memo",
+            memos[ticker_choice],
+            f"memo_{ticker_choice}.md",
+            "text/markdown",
+        )
