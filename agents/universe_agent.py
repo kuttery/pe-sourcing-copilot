@@ -127,7 +127,7 @@ def _build_profile(ticker: str) -> dict:
     info = {}
     try:
         info = tk.info or {}
-    except Exception as e:
+    except Exception:
         pass
 
     # only keep Software companies
@@ -143,12 +143,70 @@ def _build_profile(ticker: str) -> dict:
     cash           = _safe(info, 'totalCash')
     fcf            = _safe(info, 'freeCashflow')
     ev             = _safe(info, 'enterpriseValue')
+    gross_profit   = _safe(info, 'grossProfits')
 
-    ebitda_margin   = (ebitda / revenue)  if (ebitda and revenue) else None
-    fcf_margin      = (fcf / revenue)     if (fcf and revenue)    else None
-    ev_revenue      = (ev / revenue)      if (ev and revenue)     else None
-    net_debt        = (total_debt - cash) if (total_debt is not None and cash is not None) else None
-    net_debt_ebitda = (net_debt / ebitda) if (net_debt is not None and ebitda and ebitda > 0) else None
+    # Fallback: compute revenue_growth from annual financials if info dict omits it
+    if revenue_growth is None:
+        try:
+            fin = tk.financials  # rows = line items, cols = dates (newest first)
+            if fin is not None and not fin.empty and fin.shape[1] >= 2:
+                rev_row = None
+                for label in ['Total Revenue', 'totalRevenue']:
+                    if label in fin.index:
+                        rev_row = fin.loc[label]
+                        break
+                if rev_row is not None:
+                    r0 = rev_row.iloc[0]   # most recent year
+                    r1 = rev_row.iloc[1]   # prior year
+                    if r1 and r1 != 0:
+                        revenue_growth = (r0 - r1) / abs(r1)
+                        # also use most-recent revenue if info was stale
+                        if revenue is None:
+                            revenue = r0
+        except Exception:
+            pass
+
+    # Fallback: get gross_profit from financials if not in info
+    if gross_profit is None:
+        try:
+            fin = tk.financials
+            if fin is not None and not fin.empty:
+                for label in ['Gross Profit', 'grossProfit']:
+                    if label in fin.index:
+                        gross_profit = fin.loc[label].iloc[0]
+                        break
+        except Exception:
+            pass
+
+    # Fallback: get FCF from cashflow statement if info dict is missing it
+    if fcf is None:
+        try:
+            cf = tk.cashflow
+            if cf is not None and not cf.empty:
+                op, capex = None, None
+                for label in ['Operating Cash Flow', 'Total Cash From Operating Activities']:
+                    if label in cf.index:
+                        op = cf.loc[label].iloc[0]
+                        break
+                for label in ['Capital Expenditure', 'Capital Expenditures']:
+                    if label in cf.index:
+                        capex = cf.loc[label].iloc[0]
+                        break
+                if op is not None and capex is not None:
+                    fcf = op + capex  # capex is negative in yfinance
+                elif op is not None:
+                    fcf = op
+        except Exception:
+            pass
+
+    # Compute derived metrics — use explicit None checks, not truthiness,
+    # so that zero and negative values are handled correctly.
+    ebitda_margin   = (ebitda / revenue)    if (ebitda is not None and revenue) else None
+    fcf_margin      = (fcf / revenue)       if (fcf is not None and revenue)    else None
+    gross_margin    = (gross_profit / revenue) if (gross_profit is not None and revenue) else None
+    ev_revenue      = (ev / revenue)        if (ev is not None and revenue)     else None
+    net_debt        = (total_debt - cash)   if (total_debt is not None and cash is not None) else None
+    net_debt_ebitda = (net_debt / ebitda)   if (net_debt is not None and ebitda is not None and ebitda > 0) else None
 
     return {
         "ticker":          ticker,
@@ -163,6 +221,8 @@ def _build_profile(ticker: str) -> dict:
         "ebitda_margin":   ebitda_margin,
         "fcf":             fcf,
         "fcf_margin":      fcf_margin,
+        "gross_profit":    gross_profit,
+        "gross_margin":    gross_margin,
         "revenue_growth":  revenue_growth,
         "total_debt":      total_debt,
         "cash":            cash,
