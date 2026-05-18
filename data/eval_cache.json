@@ -18,7 +18,13 @@
     "net_debt_ebitda": null,
     "enterprise_value": 7277788940,
     "ev_revenue": 7.594177565744028,
-    "data_complete": true
+    "data_complete": true,
+    "gross_profit": 771890000,
+    "gross_margin": 0.8054465126082865,
+    "ebit": -120282000,
+    "interest_expense": null,
+    "capex": 2563000,
+    "interest_coverage": null
   },
   "SQSP": {
     "ticker": "SQSP",
@@ -39,7 +45,13 @@
     "net_debt_ebitda": 2.43696682464455,
     "enterprise_value": 7611091000,
     "ev_revenue": 7.518344699783471,
-    "data_complete": true
+    "data_complete": true,
+    "gross_profit": 804816000,
+    "gross_margin": 0.795008771791184,
+    "ebit": 83728000,
+    "interest_expense": 36768000,
+    "capex": 16998000,
+    "interest_coverage": 2.2771975630983463
   },
   "INST": {
     "ticker": "INST",
@@ -60,7 +72,13 @@
     "net_debt_ebitda": 1.0398549169420956,
     "enterprise_value": 4945353000,
     "ev_revenue": 9.327159050187662,
-    "data_complete": true
+    "data_complete": true,
+    "gross_profit": 343895000,
+    "gross_margin": 0.6486014975198506,
+    "ebit": -3218000,
+    "interest_expense": 42024000,
+    "capex": 5940000,
+    "interest_coverage": -0.07657529031029887
   },
   "EVBG": {
     "ticker": "EVBG",
@@ -81,7 +99,13 @@
     "net_debt_ebitda": null,
     "enterprise_value": 2041295000,
     "ev_revenue": 4.548461634446554,
-    "data_complete": true
+    "data_complete": true,
+    "gross_profit": 317301000,
+    "gross_margin": 0.707017567314634,
+    "ebit": -61399000,
+    "interest_expense": 2796000,
+    "capex": 5217000,
+    "interest_coverage": -21.959585121602288
   },
   "PWSC": {
     "ticker": "PWSC",
@@ -102,7 +126,13 @@
     "net_debt_ebitda": 4.982811461606457,
     "enterprise_value": 6372271000,
     "ev_revenue": 9.133895027743097,
-    "data_complete": true
+    "data_complete": true,
+    "gross_profit": 413778000,
+    "gross_margin": 0.5931017084473469,
+    "ebit": 24320000,
+    "interest_expense": 66722000,
+    "capex": 2168000,
+    "interest_coverage": 0.3644974671023051
   },
   "AYX": {
     "ticker": "AYX",
@@ -123,7 +153,13 @@
     "net_debt_ebitda": null,
     "enterprise_value": 4709000000,
     "ev_revenue": 4.854639175257732,
-    "data_complete": true
+    "data_complete": true,
+    "gross_profit": 839000000,
+    "gross_margin": 0.8649484536082475,
+    "ebit": -165000000,
+    "interest_expense": 43000000,
+    "capex": 3000000,
+    "interest_coverage": -3.8372093023255816
   },
   "MODN": {
     "ticker": "MODN",
@@ -144,7 +180,13 @@
     "net_debt_ebitda": -5.1112463485881205,
     "enterprise_value": 1229003000,
     "ev_revenue": 4.926594324609261,
-    "data_complete": true
+    "data_complete": true,
+    "gross_profit": 141245000,
+    "gross_margin": 0.5661961894148632,
+    "ebit": -4117000,
+    "interest_expense": 6601000,
+    "capex": 447000,
+    "interest_coverage": -0.6236933797909407
   },
   "DAY": {
     "ticker": "DAY",
@@ -165,7 +207,13 @@
     "net_debt_ebitda": 1.8375278751194648,
     "enterprise_value": 4148800000,
     "ev_revenue": 2.3572727272727274,
-    "data_complete": true
+    "data_complete": true,
+    "gross_profit": 812100000,
+    "gross_margin": 0.46142045454545455,
+    "ebit": 104100000,
+    "interest_expense": 40600000,
+    "capex": 14300000,
+    "interest_coverage": 2.564039408866995
   },
   "OLO": {
     "ticker": "OLO",
@@ -186,7 +234,13 @@
     "net_debt_ebitda": null,
     "enterprise_value": 2068515000,
     "ev_revenue": 7.259526633864209,
-    "data_complete": true
+    "data_complete": true,
+    "gross_profit": 156423000,
+    "gross_margin": 0.5489720570790839,
+    "ebit": -19141000,
+    "interest_expense": 113000,
+    "capex": 883000,
+    "interest_coverage": -169.38938053097345
   },
   "PRO": {
     "ticker": "PRO",
@@ -207,7 +261,13 @@
     "net_debt_ebitda": null,
     "enterprise_value": 827017000,
     "ev_revenue": 2.503290230406935,
-    "data_complete": true
+    "data_complete": true,
+    "gross_profit": 217043000,
+    "gross_margin": 0.6569654813361907,
+    "ebit": -19022000,
+    "interest_expense": 4596000,
+    "capex": 1166000,
+    "interest_coverage": -4.1388163620539595
   },
   "JAMF": {
     "ticker": "JAMF",
@@ -228,7 +288,13 @@
     "net_debt_ebitda": null,
     "enterprise_value": 3288834000,
     "ev_revenue": 5.242013455552208,
-    "data_complete": true
+    "data_complete": true,
+    "gross_profit": 486071000,
+    "gross_margin": 0.7747398386035043,
+    "ebit": -69096000,
+    "interest_expense": null,
+    "capex": 9009000,
+    "interest_coverage": null
   },
   "DDOG": {
     "ticker": "DDOG",
@@ -249,7 +315,13 @@
     "net_debt_ebitda": -100.27902237362511,
     "enterprise_value": 70559031296,
     "ev_revenue": 19.215260371485492,
-    "data_complete": true
+    "data_complete": true,
+    "gross_profit": 2740201000.0,
+    "gross_margin": 0.7462358073528408,
+    "ebit": 138080000.0,
+    "interest_expense": 11059000.0,
+    "capex": -135418000.0,
+    "interest_coverage": 12.485758205986075
   },
   "SNOW": {
     "ticker": "SNOW",
@@ -270,7 +342,13 @@
     "net_debt_ebitda": null,
     "enterprise_value": 53085974528,
     "ev_revenue": 11.333600923097238,
-    "data_complete": true
+    "data_complete": true,
+    "gross_profit": 3146141000.0,
+    "gross_margin": 0.6716860123380962,
+    "ebit": -1303612000.0,
+    "interest_expense": 8298000.0,
+    "capex": -104729000.0,
+    "interest_coverage": -157.0995420583273
   },
   "NET": {
     "ticker": "NET",
@@ -291,7 +369,13 @@
     "net_debt_ebitda": null,
     "enterprise_value": 69191450624,
     "ev_revenue": 29.7136924310417,
-    "data_complete": true
+    "data_complete": true,
+    "gross_profit": 1615412000.0,
+    "gross_margin": 0.69372523461395,
+    "ebit": -83940000.0,
+    "interest_expense": 8766000.0,
+    "capex": -342552000.0,
+    "interest_coverage": -9.575633127994525
   },
   "HUBS": {
     "ticker": "HUBS",
@@ -312,7 +396,13 @@
     "net_debt_ebitda": -16.414582564009276,
     "enterprise_value": 8716814336,
     "ev_revenue": 2.6429613475494667,
-    "data_complete": true
+    "data_complete": true,
+    "gross_profit": 2622779000.0,
+    "gross_margin": 0.7952335856846272,
+    "ebit": 70339000.0,
+    "interest_expense": 876000.0,
+    "capex": -184063000.0,
+    "interest_coverage": 80.29566210045662
   },
   "WDAY": {
     "ticker": "WDAY",
@@ -333,7 +423,13 @@
     "net_debt_ebitda": -1.1830778966323958,
     "enterprise_value": 30505570304,
     "ev_revenue": 3.1936317319932996,
-    "data_complete": true
+    "data_complete": true,
+    "gross_profit": 7231000000.0,
+    "gross_margin": 0.7570142378559463,
+    "ebit": 1123000000.0,
+    "interest_expense": 114000000.0,
+    "capex": -162000000.0,
+    "interest_coverage": 9.850877192982455
   },
   "TEAM": {
     "ticker": "TEAM",
@@ -354,7 +450,13 @@
     "net_debt_ebitda": null,
     "enterprise_value": 22301212672,
     "ev_revenue": 3.602674264886084,
-    "data_complete": true
+    "data_complete": true,
+    "gross_profit": 4320453000.0,
+    "gross_margin": 0.6979523967901774,
+    "ebit": -68345000.0,
+    "interest_expense": 30550000.0,
+    "capex": -44850000.0,
+    "interest_coverage": -2.237152209492635
   },
   "NOW": {
     "ticker": "NOW",
@@ -375,7 +477,13 @@
     "net_debt_ebitda": -0.9525623490304709,
     "enterprise_value": 95295455232,
     "ev_revenue": 6.826322258386604,
-    "data_complete": true
+    "data_complete": true,
+    "gross_profit": 10295000000.0,
+    "gross_margin": 0.7374642104284868,
+    "ebit": 2284000000.0,
+    "interest_expense": 23000000.0,
+    "capex": -911000000.0,
+    "interest_coverage": 99.30434782608695
   },
   "CRM": {
     "ticker": "CRM",
@@ -396,7 +504,13 @@
     "net_debt_ebitda": 0.6491871244972828,
     "enterprise_value": 168295727104,
     "ev_revenue": 4.052877414235773,
-    "data_complete": true
+    "data_complete": true,
+    "gross_profit": 32255000000.0,
+    "gross_margin": 0.7767610220750983,
+    "ebit": 8917000000.0,
+    "interest_expense": null,
+    "capex": -594000000.0,
+    "interest_coverage": null
   },
   "ZM": {
     "ticker": "ZM",
@@ -417,7 +531,13 @@
     "net_debt_ebitda": -6.0866496312326825,
     "enterprise_value": 21755402240,
     "ev_revenue": 4.468358075040954,
-    "data_complete": true
+    "data_complete": true,
+    "gross_profit": 3749733000.0,
+    "gross_margin": 0.7701604201549134,
+    "ebit": 1123633000.0,
+    "interest_expense": null,
+    "capex": -65461000.0,
+    "interest_coverage": null
   },
   "DOCU": {
     "ticker": "DOCU",
@@ -438,7 +558,13 @@
     "net_debt_ebitda": -2.0150431984859236,
     "enterprise_value": 8594749440,
     "ev_revenue": 2.6695913510088762,
-    "data_complete": true
+    "data_complete": true,
+    "gross_profit": 2556438000.0,
+    "gross_margin": 0.7940481362293709,
+    "ebit": 349874000.0,
+    "interest_expense": 2546000.0,
+    "capex": -106445000.0,
+    "interest_coverage": 137.42105263157896
   },
   "TWLO": {
     "ticker": "TWLO",
@@ -459,7 +585,13 @@
     "net_debt_ebitda": -2.906184060485798,
     "enterprise_value": 28817106944,
     "ev_revenue": 5.4354837152041,
-    "data_complete": true
+    "data_complete": true,
+    "gross_profit": 2478734000.0,
+    "gross_margin": 0.4675388933908216,
+    "ebit": 174681000.0,
+    "interest_expense": null,
+    "capex": -57817000.0,
+    "interest_coverage": null
   },
   "OKTA": {
     "ticker": "OKTA",
@@ -480,7 +612,13 @@
     "net_debt_ebitda": -8.44176681124498,
     "enterprise_value": 12539014144,
     "ev_revenue": 4.295653946241229,
-    "data_complete": true
+    "data_complete": true,
+    "gross_profit": 2258000000.0,
+    "gross_margin": 0.7735525695418416,
+    "ebit": 259000000.0,
+    "interest_expense": 4000000.0,
+    "capex": -21000000.0,
+    "interest_coverage": 64.75
   },
   "ZS": {
     "ticker": "ZS",
@@ -501,7 +639,13 @@
     "net_debt_ebitda": null,
     "enterprise_value": 24249028608,
     "ev_revenue": 8.079984734461434,
-    "data_complete": true
+    "data_complete": true,
+    "gross_profit": 2054937000.0,
+    "gross_margin": 0.6847226690475425,
+    "ebit": -13062000.0,
+    "interest_expense": 5229000.0,
+    "capex": -245760000.0,
+    "interest_coverage": -2.497991967871486
   },
   "CRWD": {
     "ticker": "CRWD",
@@ -522,7 +666,13 @@
     "net_debt_ebitda": null,
     "enterprise_value": 146301222912,
     "ev_revenue": 30.403382175799894,
-    "data_complete": true
+    "data_complete": true,
+    "gross_profit": 3593076000.0,
+    "gross_margin": 0.7466900183083439,
+    "ebit": -98968000.0,
+    "interest_expense": 28021000.0,
+    "capex": -370859000.0,
+    "interest_coverage": -3.531922486706399
   },
   "PANW": {
     "ticker": "PANW",
@@ -543,7 +693,13 @@
     "net_debt_ebitda": -2.6534331824990964,
     "enterprise_value": 194072281088,
     "ev_revenue": 19.616140190139937,
-    "data_complete": true
+    "data_complete": true,
+    "gross_profit": 6769900000.0,
+    "gross_margin": 0.6842775626108704,
+    "ebit": 1597600000.0,
+    "interest_expense": 1900000.0,
+    "capex": -246200000.0,
+    "interest_coverage": 840.8421052631579
   },
   "MDB": {
     "ticker": "MDB",
@@ -564,7 +720,13 @@
     "net_debt_ebitda": null,
     "enterprise_value": 22763741184,
     "ev_revenue": 9.239292546388498,
-    "data_complete": true
+    "data_complete": true,
+    "gross_profit": 1767739000.0,
+    "gross_margin": 0.7174856555714149,
+    "ebit": -52563000.0,
+    "interest_expense": 3128000.0,
+    "capex": -4960000.0,
+    "interest_coverage": -16.80402813299233
   },
   "ESTC": {
     "ticker": "ESTC",
@@ -585,7 +747,13 @@
     "net_debt_ebitda": null,
     "enterprise_value": 4580781056,
     "ev_revenue": 2.731399597457008,
-    "data_complete": true
+    "data_complete": true,
+    "gross_profit": 1103423000.0,
+    "gross_margin": 0.6579421939577642,
+    "ebit": -6262000.0,
+    "interest_expense": 25307000.0,
+    "capex": -4345000.0,
+    "interest_coverage": -0.24744141937013475
   },
   "PD": {
     "ticker": "PD",
@@ -606,7 +774,13 @@
     "net_debt_ebitda": -2.761079200664484,
     "enterprise_value": 533412768,
     "ev_revenue": 1.082970494791406,
-    "data_complete": true
+    "data_complete": true,
+    "gross_profit": 418404000.0,
+    "gross_margin": 0.849471955089578,
+    "ebit": 26503000.0,
+    "interest_expense": 6338000.0,
+    "capex": -12174000.0,
+    "interest_coverage": 4.181603029346797
   },
   "FROG": {
     "ticker": "FROG",
@@ -627,7 +801,13 @@
     "net_debt_ebitda": null,
     "enterprise_value": 7747863040,
     "ev_revenue": 14.568033694344164,
-    "data_complete": true
+    "data_complete": true,
+    "gross_profit": 408387000.0,
+    "gross_margin": 0.7678756768953069,
+    "ebit": -89928000.0,
+    "interest_expense": null,
+    "capex": -3460000.0,
+    "interest_coverage": null
   },
   "BILL": {
     "ticker": "BILL",
@@ -648,7 +828,13 @@
     "net_debt_ebitda": -8.594137032165492,
     "enterprise_value": 3703349760,
     "ev_revenue": 2.3141265167038685,
-    "data_complete": true
+    "data_complete": true,
+    "gross_profit": 1190467000.0,
+    "gross_margin": 0.743891727893642,
+    "ebit": 44234000.0,
+    "interest_expense": 13824000.0,
+    "capex": -40970000.0,
+    "interest_coverage": 3.1997974537037037
   },
   "PCTY": {
     "ticker": "PCTY",
@@ -669,7 +855,13 @@
     "net_debt_ebitda": -0.4033800615444732,
     "enterprise_value": 5570471424,
     "ev_revenue": 3.2249046629809888,
-    "data_complete": true
+    "data_complete": true,
+    "gross_profit": 1096998000.0,
+    "gross_margin": 0.6350834060899795,
+    "ebit": 304024000.0,
+    "interest_expense": null,
+    "capex": -75475000.0,
+    "interest_coverage": null
   },
   "PAYC": {
     "ticker": "PAYC",
@@ -690,7 +882,13 @@
     "net_debt_ebitda": 0.9089147286821705,
     "enterprise_value": 6962176000,
     "ev_revenue": 3.3262509643877354,
-    "data_complete": true
+    "data_complete": true,
+    "gross_profit": 1706300000.0,
+    "gross_margin": 0.8152023190069876,
+    "ebit": 622800000.0,
+    "interest_expense": 3400000.0,
+    "capex": -275400000.0,
+    "interest_coverage": 183.1764705882353
   },
   "APPF": {
     "ticker": "APPF",
@@ -711,7 +909,13 @@
     "net_debt_ebitda": -0.6262984412718872,
     "enterprise_value": 5249215488,
     "ev_revenue": 5.273823062026246,
-    "data_complete": true
+    "data_complete": true,
+    "gross_profit": 605481000.0,
+    "gross_margin": 0.6083194086275456,
+    "ebit": 152917000.0,
+    "interest_expense": null,
+    "capex": -6595000.0,
+    "interest_coverage": null
   },
   "BLKB": {
     "ticker": "BLKB",
@@ -732,7 +936,13 @@
     "net_debt_ebitda": 4.402608712500976,
     "enterprise_value": 2556028160,
     "ev_revenue": 2.2429779207476948,
-    "data_complete": true
+    "data_complete": true,
+    "gross_profit": 663292000.0,
+    "gross_margin": 0.5820551331518116,
+    "ebit": 199753000.0,
+    "interest_expense": 67970000.0,
+    "capex": -62003000.0,
+    "interest_coverage": 2.9388406649992644
   },
   "ALRM": {
     "ticker": "ALRM",
@@ -753,7 +963,13 @@
     "net_debt_ebitda": 0.4212963305694773,
     "enterprise_value": 2214422016,
     "ev_revenue": 2.134263320076359,
-    "data_complete": true
+    "data_complete": true,
+    "gross_profit": 668892000.0,
+    "gross_margin": 0.6446791308872698,
+    "ebit": 183900000.0,
+    "interest_expense": 17294000.0,
+    "capex": -17588000.0,
+    "interest_coverage": 10.633745807794611
   },
   "WK": {
     "ticker": "WK",
@@ -774,6 +990,12 @@
     "net_debt_ebitda": -8.48064830765498,
     "enterprise_value": 2590150400,
     "ev_revenue": 2.798365638469837,
-    "data_complete": true
+    "data_complete": true,
+    "gross_profit": 694138000.0,
+    "gross_margin": 0.7499378906939828,
+    "ebit": -9638000.0,
+    "interest_expense": 12777000.0,
+    "capex": -2466000.0,
+    "interest_coverage": -0.7543241762542068
   }
 }

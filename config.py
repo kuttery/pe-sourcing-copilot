@@ -18,27 +18,36 @@ DEFAULT_FILTERS = {
 # ---------------------------------------------------------------------------
 # PE scoring: subscore weights (must sum to 1.0)
 #
-# SCORING THESIS (v2 — "buyout fit", not "company quality")
+# SCORING THESIS (v3 — "buyout fit", not "company quality")
 # ----------------------------------------------------------
-# v1 of this model scored companies on raw financial quality (high margin,
-# high growth, cheap). Evaluation showed that does NOT predict take-privates:
-# PE firms acquire mid-cap, moderate-growth businesses with an OPERATIONAL
-# IMPROVEMENT GAP — not already-perfect compounders, which are too expensive
-# and too optimised to buy. v2 scores buyout FIT:
-#   - scale_fit            : is it in the mid-cap LBO sweet spot
-#   - valuation_attractiveness : is it cheap enough to underwrite
-#   - cash_flow_stability  : can it service LBO debt (still matters)
-#   - improvement_headroom : moderate margins = room to expand post-deal
-#   - growth_moderation    : moderate (not hyper-) growth scores highest
-#   - leverage_capacity    : low existing debt = room to add leverage
+# v1 scored raw quality (high margin, high growth, cheap) — did not predict
+# take-privates.  v2 scored buyout FIT (mid-cap, moderate growth, room to
+# improve).  v3 keeps the v2 thesis and enriches three dimensions with
+# income-statement data (gross_profit, ebit) collected from 10-Ks:
+#
+#   scale_fit         (0.22) — mid-cap LBO sweet spot, unchanged
+#   valuation         (0.20) — EV/Revenue, same thresholds (was 0.22)
+#   cash_generation   (0.18) — FCF margin + FCF/EBITDA conversion
+#   margin_headroom   (0.16) — EBITDA margin band (0.6) + gross margin (0.4)
+#   growth_quality    (0.12) — banded revenue growth; Rule-of-40 in rationale
+#   leverage_capacity (0.12) — net debt/EBITDA only (was 0.10)
+#
+# Design decisions:
+#   • interest_coverage dropped from leverage: EBIT/interest_expense
+#     anti-correlates with PE targets (pre-profitability LBO candidates have
+#     negative EBIT by construction).
+#   • Rule-of-40 not averaged into growth_quality: doing so softened the
+#     hyper-growth penalty that correctly down-ranks richly-priced growers.
+#   • EBITDA bands kept as primary margin signal (0.6 weight): directly tests
+#     the improvement thesis; gross margin added as quality check (0.4 weight).
 # ---------------------------------------------------------------------------
 SCORE_WEIGHTS = {
-    "scale_fit":                0.22,  # mid-cap sweet spot — strongest signal
-    "valuation_attractiveness": 0.22,  # must be underwritable, not richly priced
-    "cash_flow_stability":      0.18,  # FCF to service debt
-    "improvement_headroom":     0.16,  # margin expansion opportunity
-    "growth_moderation":        0.12,  # steady > explosive for an LBO
-    "leverage_capacity":        0.10,  # room to add debt
+    "scale_fit":         0.22,
+    "valuation":         0.20,
+    "cash_generation":   0.18,
+    "margin_headroom":   0.16,
+    "growth_quality":    0.12,
+    "leverage_capacity": 0.12,
 }
 
 # ---------------------------------------------------------------------------
@@ -47,20 +56,26 @@ SCORE_WEIGHTS = {
 # for lower-is-better, read as ascending bounds (see scoring_agent.py).
 # ---------------------------------------------------------------------------
 THRESHOLDS = {
-    # FCF margin — positive, stable cash generation (higher better, but
-    # extreme values are not required — a positive FCF margin already scores well)
-    "cash_flow_stability": [(0.20, 5), (0.12, 4), (0.05, 3), (0.0, 2), (-1e9, 1)],
-    # Net debt / EBITDA — LOWER is better (lower existing leverage = more room)
-    "leverage_capacity":   [(1.5, 5), (3.0, 4), (4.5, 3), (6.5, 2), (1e9, 1)],
-    # EV / Revenue — LOWER is better (cheap enough to underwrite an LBO)
-    "valuation_attractiveness": [(4.0, 5), (7.0, 4), (10.0, 3), (14.0, 2), (1e9, 1)],
-    # improvement_headroom and growth_moderation use "band" scoring —
-    # a middle range scores highest — handled by functions in scoring_agent.py
-    # scale_fit also handled by a dedicated function.
+    # EV/Revenue — lower is better (same cut-points as v2)
+    "valuation": [(4.0, 5), (7.0, 4), (10.0, 3), (14.0, 2), (1e9, 1)],
+
+    # FCF margin — higher is better
+    "fcf_margin": [(0.20, 5), (0.12, 4), (0.05, 3), (0.0, 2), (-1e9, 1)],
+
+    # FCF conversion = FCF / EBITDA — higher is better
+    # (only used when EBITDA > 0; falls back to FCF margin score otherwise)
+    "fcf_conversion": [(0.75, 5), (0.50, 4), (0.25, 3), (0.0, 2), (-1e9, 1)],
+
+    # Gross margin — higher is better (software quality signal)
+    # Floor at 0.45 avoids penalising hybrid SaaS/services gross margins
+    "gross_margin": [(0.70, 5), (0.60, 4), (0.45, 3), (0.35, 2), (-1e9, 1)],
+
+    # Net debt / EBITDA — lower is better (room to add LBO leverage)
+    "net_debt_ebitda": [(1.5, 5), (3.0, 4), (4.5, 3), (6.5, 2), (1e9, 1)],
 }
 
-# improvement_headroom: EBITDA margin BANDS. Moderate margins score highest
-# (room to improve); already-elite OR very weak margins score lower.
+# EBITDA margin BANDS (primary signal in margin_headroom).
+# Moderate margins score highest — they signal room to improve post-deal.
 IMPROVEMENT_BANDS = [
     (0.15, 0.30, 5),   # sweet spot: solid but improvable
     (0.30, 0.45, 4),   # good, less headroom
@@ -70,7 +85,7 @@ IMPROVEMENT_BANDS = [
     (-1e9, 0.00, 1),   # loss-making
 ]
 
-# growth_moderation: revenue-growth BANDS. Moderate growth scores highest;
+# Revenue growth BANDS. Moderate growth scores highest;
 # hyper-growth (expensive, hard to lever) and decline both score lower.
 GROWTH_BANDS = [
     (0.08, 0.20, 5),   # steady, durable growth — ideal LBO profile
@@ -92,3 +107,20 @@ MEMO_MODEL = "claude-haiku-4-5-20251001"
 
 # Evaluation: K values for Precision@K / Recall@K / NDCG@K
 EVAL_K_VALUES = [3, 5, 10]
+
+# ---------------------------------------------------------------------------
+# V2 config — archived for ablation / reference only
+# ---------------------------------------------------------------------------
+_V2_SCORE_WEIGHTS = {
+    "scale_fit":                0.22,
+    "valuation_attractiveness": 0.22,
+    "cash_flow_stability":      0.18,
+    "improvement_headroom":     0.16,
+    "growth_moderation":        0.12,
+    "leverage_capacity":        0.10,
+}
+_V2_THRESHOLDS = {
+    "cash_flow_stability":       [(0.20, 5), (0.12, 4), (0.05, 3), (0.0, 2), (-1e9, 1)],
+    "leverage_capacity":         [(1.5, 5), (3.0, 4), (4.5, 3), (6.5, 2), (1e9, 1)],
+    "valuation_attractiveness":  [(4.0, 5), (7.0, 4), (10.0, 3), (14.0, 2), (1e9, 1)],
+}

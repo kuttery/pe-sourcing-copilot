@@ -1,0 +1,17 @@
+# Streamlit base theme — classic finance (light, navy accents)
+# Copy this file to:  .streamlit/config.toml  in your project root.
+
+[theme]
+base = "light"
+primaryColor = "#1B2A4A"            # navy — buttons, accents, selected states
+backgroundColor = "#FFFFFF"         # main canvas
+secondaryBackgroundColor = "#F5F6F8" # sidebar, table header, panels
+textColor = "#1B2A4A"               # body text
+font = "sans serif"
+
+[ui]
+hideTopBar = false
+
+[server]
+# Optional quality-of-life settings — uncomment if desired.
+# runOnSave = true
