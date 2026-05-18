@@ -376,9 +376,14 @@ with tab1:
         profiles_live = universe_agent.run_live(filters, progress_cb=on_progress)
         progress_bar.empty()
         status_text.empty()
-        st.session_state["profiles"]    = profiles_live
-        st.session_state["profiles_df"] = profiles_to_df(profiles_live)
-        st.success(f"Fetched {len(profiles_live)} software companies from Yahoo Finance.")
+        if profiles_live:
+            st.session_state["profiles"]    = profiles_live
+            st.session_state["profiles_df"] = profiles_to_df(profiles_live)
+            st.success(f"Fetched {len(profiles_live)} software companies from Yahoo Finance.")
+        else:
+            st.warning("Live fetch returned 0 companies — filters may be too narrow, "
+                       "or Yahoo Finance screener is temporarily unavailable. "
+                       "Showing cached data.")
 
     # Load from cache on first visit ──────────────────────────────────────────
     if "profiles_df" not in st.session_state:
@@ -392,6 +397,10 @@ with tab1:
     if "profiles_df" in st.session_state:
         df_all   = st.session_state["profiles_df"]
         profiles = st.session_state.get("profiles", {})
+
+        if df_all.empty or "_market_cap" not in df_all.columns:
+            st.info("No company data loaded yet. Click 'Refresh from market' to fetch live data.")
+            st.stop()
 
         df = df_all[
             df_all["_market_cap"].notna() &
