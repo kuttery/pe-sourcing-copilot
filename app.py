@@ -54,12 +54,18 @@ def profiles_to_df(profiles: dict) -> pd.DataFrame:
 
 def apply_filters(df, rg_min, rg_max, em_min, em_max, fcf_min, fcf_max,
                   evr_max, nd_max, countries, industries):
-    df = df[df["_rev_growth"].notna()   & (df["_rev_growth"]*100   >= rg_min)  & (df["_rev_growth"]*100   <= rg_max)]
-    df = df[df["_ebitda_margin"].notna() & (df["_ebitda_margin"]*100 >= em_min) & (df["_ebitda_margin"]*100 <= em_max)]
-    df = df[df["_fcf_margin"].notna()   & (df["_fcf_margin"]*100   >= fcf_min) & (df["_fcf_margin"]*100   <= fcf_max)]
-    df = df[df["_ev_revenue"].notna()   & (df["_ev_revenue"] <= evr_max)]
+    # For numeric range filters: companies with missing data pass through
+    # (they show as "n/a" in the table). Only filter rows where the value
+    # is present AND outside the selected range.
+    def _in_range(col, lo, hi):
+        return df[col].isna() | ((df[col] * 100 >= lo) & (df[col] * 100 <= hi))
+
+    df = df[_in_range("_rev_growth",    rg_min,  rg_max)]
+    df = df[_in_range("_ebitda_margin", em_min,  em_max)]
+    df = df[_in_range("_fcf_margin",    fcf_min, fcf_max)]
+    df = df[df["_ev_revenue"].isna() | (df["_ev_revenue"] <= evr_max)]
     if nd_max is not None:
-        df = df[df["_net_debt_ebitda"].notna() & (df["_net_debt_ebitda"] <= nd_max)]
+        df = df[df["_net_debt_ebitda"].isna() | (df["_net_debt_ebitda"] <= nd_max)]
     if countries and "_country" in df.columns:
         # Only apply country filter if at least some rows have country data.
         # eval_cache profiles are US-only but lack a country field; skipping
