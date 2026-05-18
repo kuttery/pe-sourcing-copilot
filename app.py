@@ -55,9 +55,9 @@ def apply_filters(df, rg_min, rg_max, em_min, em_max, fcf_min, fcf_max,
     df = df[df["_ev_revenue"].notna() & (df["_ev_revenue"] <= evr_max)]
     if nd_max is not None:
         df = df[df["_net_debt_ebitda"].notna() & (df["_net_debt_ebitda"] <= nd_max)]
-    if countries:
+    if countries and "_country" in df.columns:
         df = df[df["_country"].isin(countries)]
-    if industries:
+    if industries and "_industry" in df.columns:
         df = df[df["_industry"].isin(industries)]
     return df
 
@@ -108,8 +108,9 @@ with st.sidebar:
     selected_countries = st.multiselect(
         "Countries / Regions",
         options=sorted(REGION_LABELS.values()),
-        default=["United States"],
-        help="Used when fetching live data. Filters cached results by country."
+        default=[],
+        placeholder="All countries (fetch live to filter)",
+        help="Selects which markets to query when fetching live data. After a fetch, also filters the table."
     )
     selected_region_codes = [region_options[c] for c in selected_countries if c in region_options]
 
@@ -205,8 +206,8 @@ with tab1:
         ].copy()
 
         # apply fundamental filters
-        # country filter from multiselect
-        country_filter = selected_countries if selected_countries else []
+        # country filter — only apply if column exists and countries selected
+        country_filter = selected_countries if (selected_countries and "_country" in df.columns) else []
         df = apply_filters(df, rg_min, rg_max, em_min, em_max, fcf_min, fcf_max,
                            evr_max, nd_max, country_filter, selected_industries)
 
