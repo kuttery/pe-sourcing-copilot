@@ -168,7 +168,7 @@ if "ranked" in st.session_state:
         styled = (
             df_out.style
             .apply(highlight_acquired, axis=1)
-            .applymap(color_score, subset=["PE Score"])
+            .map(color_score, subset=["PE Score"])
             .format({"PE Score": "{:.2f}"})
         )
         st.dataframe(styled, use_container_width=True, hide_index=True)
