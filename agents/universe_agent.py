@@ -190,8 +190,37 @@ def run_live(filters: dict, progress_cb=None) -> dict:
     if progress_cb:
         progress_cb(len(to_fetch), len(to_fetch), "done")
 
-    # return only tickers that came from screener + are software
-    return {t: cache[t] for t in tickers if t in cache}
+    # return only tickers that came from screener + are software, deduplicated
+    raw = {t: cache[t] for t in tickers if t in cache}
+    return deduplicate_profiles(raw)
+
+
+def deduplicate_profiles(profiles: dict) -> dict:
+    """
+    Remove cross-listing duplicates (e.g. KSOLVES.NS and KSOLVES.BO are the
+    same company on two Indian exchanges). Keep the entry with the most complete
+    data; prefer the ticker without a dot-suffix (US listings) or the first seen.
+    """
+    # group by (company_name, revenue) as a fingerprint
+    seen = {}  # fingerprint -> ticker
+    result = {}
+    for ticker, p in profiles.items():
+        name = (p.get('company_name') or ticker).strip().lower()
+        rev  = round(p.get('revenue') or 0, -4)   # round to nearest 10k
+        key  = (name, rev)
+        if key not in seen:
+            seen[key] = ticker
+            result[ticker] = p
+        else:
+            # keep the one with no exchange suffix (US/pure ticker) or more data
+            existing = seen[key]
+            existing_score = sum(1 for v in profiles[existing].values() if v is not None)
+            new_score      = sum(1 for v in p.values() if v is not None)
+            if '.' not in ticker or new_score > existing_score:
+                del result[existing]
+                seen[key] = ticker
+                result[ticker] = p
+    return result
 
 
 def run_from_cache(filters: dict) -> dict:
@@ -199,10 +228,11 @@ def run_from_cache(filters: dict) -> dict:
     cache = load_cache()
     min_cap = filters.get('min_market_cap', 0)
     max_cap = filters.get('max_market_cap', 1e18)
-    return {
+    profiles = {
         t: p for t, p in cache.items()
         if p.get('market_cap') and min_cap <= p['market_cap'] <= max_cap
     }
+    return deduplicate_profiles(profiles)
 
 
 # legacy shim so main.py still works
