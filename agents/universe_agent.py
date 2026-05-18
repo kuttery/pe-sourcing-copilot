@@ -201,30 +201,23 @@ def deduplicate_profiles(profiles: dict) -> dict:
     same company on two Indian exchanges). Keep the entry with the most complete
     data; prefer the ticker without a dot-suffix (US listings) or the first seen.
     """
-    # group by normalised company name — same company on BSE+NSE has same name
-    seen = {}  # name -> ticker
+    # Deduplicate by base ticker (strip exchange suffix like .NS, .BO, .L, .PA)
+    # INFOBEAN.BO and INFOBEAN.NS -> both have base "INFOBEAN" -> keep one
+    seen = {}  # base_ticker -> ticker
     result = {}
     for ticker, p in profiles.items():
-        # strip exchange suffix (.NS, .BO, .L, .PA, etc.) for base symbol
-        base = ticker.split('.')[0]
-        name = (p.get('company_name') or base).strip().lower()
-        # remove common legal suffixes so "Foo Ltd" == "FOO LIMITED"
-        for suffix in [' limited', ' ltd', ' inc', ' corp', ' plc', ' ag', ' sa']:
-            name = name.replace(suffix, '')
-        name = name.strip()
-
-        if name not in seen:
-            seen[name] = ticker
+        base = ticker.split('.')[0].upper()
+        if base not in seen:
+            seen[base] = ticker
             result[ticker] = p
         else:
-            # prefer ticker with no dot (US listing) or shorter suffix
-            existing = seen[name]
-            prefer_new = '.' not in ticker and '.' in existing
-            if prefer_new:
+            # prefer the ticker without any suffix (US listings have no dot)
+            existing = seen[base]
+            if '.' not in ticker:
                 del result[existing]
-                seen[name] = ticker
+                seen[base] = ticker
                 result[ticker] = p
-            # else keep existing, discard new
+            # else keep existing
     return result
 
 
