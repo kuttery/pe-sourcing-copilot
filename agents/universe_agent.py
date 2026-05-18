@@ -15,7 +15,8 @@ from yfinance import EquityQuery
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-CACHE_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "cache.json")
+# Live screener cache — separate from the hand-labelled eval cache
+CACHE_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "live_cache.json")
 
 REGION_LABELS = {
     'us': 'United States', 'gb': 'United Kingdom', 'de': 'Germany',

@@ -16,7 +16,8 @@ import time
 import pandas as pd
 import yfinance as yf
 
-CACHE_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "cache.json")
+# Evaluation uses the hand-labelled eval_cache (never the live screener cache)
+CACHE_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "eval_cache.json")
 
 
 def _safe(d, key, default=None):
