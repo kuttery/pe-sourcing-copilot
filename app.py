@@ -389,6 +389,17 @@ with tab1:
     if "profiles_df" not in st.session_state:
         raw_profiles = universe_agent.run_from_cache(
             {"min_market_cap": 0, "max_market_cap": 1e18})
+
+        # live_cache.json is gitignored and won't exist on Streamlit Cloud;
+        # fall back to the committed eval_cache.json so the app always has
+        # data to show on cold start.
+        if not raw_profiles:
+            eval_cache_path = os.path.join(
+                os.path.dirname(__file__), "data", "eval_cache.json")
+            if os.path.exists(eval_cache_path):
+                with open(eval_cache_path) as f:
+                    raw_profiles = json.load(f)
+
         if raw_profiles:
             st.session_state["profiles"]    = raw_profiles
             st.session_state["profiles_df"] = profiles_to_df(raw_profiles)
